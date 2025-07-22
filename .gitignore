@@ -1,0 +1,35 @@
+# Composer dependencies
+/vendor/
+
+# XAMPP/OS files
+.DS_Store
+Thumbs.db
+
+# PHPStorm/VSCode/IDE
+.idea/
+.vscode/
+
+# Log files
+*.log
+
+# Environment/config
+.env
+.env.*
+config/database.php
+config/koneksi.php
+
+# File hasil proses
+*.pdf
+*.xlsx
+*.csv
+
+# Cache/temp
+/cache/
+/tmp/
+
+# Backup
+*.bak
+*.old
+
+# User uploads (jika ada)
+/uploads/ 
