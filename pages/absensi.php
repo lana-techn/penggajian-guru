@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($stmt->execute()) set_flash_message('success', "Data absensi berhasil {$action_text}.");
         else set_flash_message('error', "Gagal memproses data absensi: " . $stmt->error);
-        
+
         $stmt->close();
         header('Location: absensi.php?action=list');
         exit;
@@ -116,14 +116,14 @@ require_once __DIR__ . '/../includes/header.php';
                 <i class="fa-solid fa-plus mr-2"></i>Tambah Absensi
             </a>
         </div>
-        
+
         <form method="get" action="absensi.php" class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <input type="hidden" name="action" value="list">
             <div>
                 <label for="guru_filter" class="sr-only">Nama Guru</label>
                 <select id="guru_filter" name="guru_id" onchange="this.form.submit()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">-- Semua Guru --</option>
-                    <?php foreach($guru_list as $g): ?>
+                    <?php foreach ($guru_list as $g): ?>
                         <option value="<?= e($g['id_guru']) ?>" <?= $guru_filter == $g['id_guru'] ? 'selected' : '' ?>><?= e($g['nama_guru']) ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -168,7 +168,7 @@ require_once __DIR__ . '/../includes/header.php';
                         $types_string_count .= 's';
                     }
                     $stmt_count = $conn->prepare($count_sql);
-                    if($types_string_count) $stmt_count->bind_param($types_string_count, ...$count_params);
+                    if ($types_string_count) $stmt_count->bind_param($types_string_count, ...$count_params);
                     $stmt_count->execute();
                     $total_records = $stmt_count->get_result()->fetch_assoc()['total'];
                     $total_pages = ceil($total_records / $records_per_page);
@@ -184,38 +184,39 @@ require_once __DIR__ . '/../includes/header.php';
                     $types_string_data .= 'ii';
 
                     $stmt = $conn->prepare($sql);
-                    if($types_string_data) $stmt->bind_param($types_string_data, ...$data_params);
+                    if ($types_string_data) $stmt->bind_param($types_string_data, ...$data_params);
                     $stmt->execute();
                     $result = $stmt->get_result();
 
-                    if($result->num_rows > 0):
+                    if ($result->num_rows > 0):
                         while ($row = $result->fetch_assoc()):
-                        ?>
-                        <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 font-medium text-left text-gray-900"><?= e($row['nama_guru']) ?></td>
-                            <td class="px-4 py-3"><?= e($row['tahun']) ?></td>
-                            <td class="px-4 py-3"><?= e($row['bulan']) ?></td>
-                            <td class="px-4 py-3"><?= e($row['jml_terlambat']) ?></td>
-                            <td class="px-4 py-3"><?= e($row['jml_alfa']) ?></td>
-                            <td class="px-4 py-3"><?= e($row['jml_izin']) ?></td>
-                            <td class="px-4 py-3">
-                                <div class="flex items-center justify-center gap-4">
-                                    <a href="absensi.php?action=edit&id=<?= e($row['id_kehadiran']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
-                                    <a href="absensi.php?action=delete&id=<?= e($row['id_kehadiran']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endwhile;
+                    ?>
+                            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-medium text-left text-gray-900"><?= e($row['nama_guru']) ?></td>
+                                <td class="px-4 py-3"><?= e($row['tahun']) ?></td>
+                                <td class="px-4 py-3"><?= e($row['bulan']) ?></td>
+                                <td class="px-4 py-3"><?= e($row['jml_terlambat']) ?></td>
+                                <td class="px-4 py-3"><?= e($row['jml_alfa']) ?></td>
+                                <td class="px-4 py-3"><?= e($row['jml_izin']) ?></td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center justify-center gap-4">
+                                        <a href="absensi.php?action=edit&id=<?= e($row['id_kehadiran']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
+                                        <a href="absensi.php?action=delete&id=<?= e($row['id_kehadiran']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                    <?php endwhile;
                     else:
                         echo '<tr><td colspan="7" class="text-center py-5 text-gray-500">Tidak ada data ditemukan.</td></tr>';
                     endif;
-                    $stmt->close(); $conn->close();
+                    $stmt->close();
+                    $conn->close();
                     ?>
                 </tbody>
             </table>
         </div>
-        
-        <?php 
+
+        <?php
         echo generate_pagination_links($page, $total_pages, 'absensi.php', ['action' => 'list', 'guru_id' => $guru_filter, 'tanggal' => $tanggal_filter]);
         ?>
     </div>
@@ -233,12 +234,12 @@ require_once __DIR__ . '/../includes/header.php';
                     <label for="guru_id" class="block mb-2 text-sm font-medium text-gray-700">Nama Guru</label>
                     <select name="guru_id" id="guru_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required <?= $action === 'edit' ? 'disabled' : '' ?>>
                         <option value="">- Pilih Guru -</option>
-                        <?php foreach($guru_list as $g): ?>
-                        <option value="<?= e($g['id_guru']) ?>" <?= (isset($absensi_data) && $absensi_data['guru_id'] == $g['id_guru']) ? 'selected' : '' ?>><?= e($g['nama_guru']) ?></option>
+                        <?php foreach ($guru_list as $g): ?>
+                            <option value="<?= e($g['id_guru']) ?>" <?= (isset($absensi_data) && $absensi_data['guru_id'] == $g['id_guru']) ? 'selected' : '' ?>><?= e($g['nama_guru']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <?php if($action === 'edit'): ?>
-                    <input type="hidden" name="guru_id" value="<?= e($absensi_data['guru_id']) ?>">
+                    <?php if ($action === 'edit'): ?>
+                        <input type="hidden" name="guru_id" value="<?= e($absensi_data['guru_id']) ?>">
                     <?php endif; ?>
                 </div>
                 <div>
@@ -248,8 +249,8 @@ require_once __DIR__ . '/../includes/header.php';
                 <div>
                     <label for="status" class="block mb-2 text-sm font-medium text-gray-700">Status</label>
                     <select name="status" id="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
-                        <?php foreach($status_list as $s): ?>
-                        <option value="<?= e($s) ?>" <?= (isset($absensi_data) && $absensi_data['status'] == $s) ? 'selected' : '' ?>><?= ucfirst($s) ?></option>
+                        <?php foreach ($status_list as $s): ?>
+                            <option value="<?= e($s) ?>" <?= (isset($absensi_data) && $absensi_data['status'] == $s) ? 'selected' : '' ?>><?= ucfirst($s) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -265,8 +266,3 @@ require_once __DIR__ . '/../includes/header.php';
         </form>
     </div>
 <?php endif; ?>
-
-<?php
-require_once __DIR__ . '/../includes/footer.php';
-?>
-

@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($stmt->execute()) set_flash_message('success', "Jabatan berhasil {$action_text}.");
         else set_flash_message('error', "Gagal memproses data jabatan: " . $stmt->error);
-        
+
         $stmt->close();
         header('Location: jabatan.php?action=list');
         exit;
@@ -109,7 +109,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <i class="fa-solid fa-plus mr-2"></i>Tambah Jabatan
             </a>
         </div>
-        
+
         <form method="get" action="jabatan.php" class="mb-6">
             <input type="hidden" name="action" value="list">
             <div class="relative">
@@ -151,20 +151,20 @@ require_once __DIR__ . '/../includes/header.php';
 
                     if ($result->num_rows > 0) {
                         while ($row = $result->fetch_assoc()):
-                        ?>
-                        <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 font-mono text-xs"><?= e($row['id_jabatan']) ?></td>
-                            <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['nama_jabatan']) ?></td>
-                            <td class="px-6 py-4">Rp <?= number_format($row['gaji_awal'], 2, ',', '.') ?></td>
-                            <td class="px-6 py-4">Rp <?= number_format($row['kenaikan_pertahun'], 2, ',', '.') ?></td>
-                            <td class="px-6 py-4 text-center">
-                                <div class="flex items-center justify-center gap-4">
-                                    <a href="jabatan.php?action=edit&id=<?= e($row['id_jabatan']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
-                                    <a href="jabatan.php?action=delete&id=<?= e($row['id_jabatan']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus data ini?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endwhile;
+                    ?>
+                            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-mono text-xs"><?= e($row['id_jabatan']) ?></td>
+                                <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['nama_jabatan']) ?></td>
+                                <td class="px-6 py-4">Rp <?= number_format($row['gaji_awal'], 2, ',', '.') ?></td>
+                                <td class="px-6 py-4">Rp <?= number_format($row['kenaikan_pertahun'], 2, ',', '.') ?></td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="flex items-center justify-center gap-4">
+                                        <a href="jabatan.php?action=edit&id=<?= e($row['id_jabatan']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
+                                        <a href="jabatan.php?action=delete&id=<?= e($row['id_jabatan']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus data ini?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                    <?php endwhile;
                     } else {
                         echo '<tr><td colspan="5" class="text-center py-5 text-gray-500">Tidak ada data ditemukan.</td></tr>';
                     }
@@ -174,8 +174,8 @@ require_once __DIR__ . '/../includes/header.php';
                 </tbody>
             </table>
         </div>
-        
-        <?php 
+
+        <?php
         // Menampilkan pagination
         echo generate_pagination_links($page, $total_pages, 'jabatan.php', ['action' => 'list', 'search' => $search]);
         ?>
@@ -189,7 +189,7 @@ require_once __DIR__ . '/../includes/header.php';
         <form method="POST" action="jabatan.php">
             <?php csrf_input(); ?>
             <input type="hidden" name="id_jabatan" value="<?= e($jabatan_data['id_jabatan'] ?? '') ?>">
-            
+
             <div class="mb-5">
                 <label for="nama_jabatan" class="block mb-2 text-sm font-medium text-gray-700">Nama Jabatan</label>
                 <input type="text" id="nama_jabatan" name="nama_jabatan" value="<?= e($jabatan_data['nama_jabatan'] ?? '') ?>" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
@@ -209,7 +209,3 @@ require_once __DIR__ . '/../includes/header.php';
         </form>
     </div>
 <?php endif; ?>
-
-<?php
-require_once __DIR__ . '/../includes/footer.php';
-?>

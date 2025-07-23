@@ -117,15 +117,17 @@ require_once __DIR__ . '/../../includes/header.php';
     <div class="bg-white p-6 rounded-xl shadow-lg">
         <div class="text-center mb-6">
             <h2 class="text-xl font-bold text-gray-800">
-                LAPORAN GAJI 
-                <?php 
-                    if ($filter_jabatan) {
-                        $nama_jabatan_terfilter = '';
-                        foreach ($jabatan_list as $j) { if ($j['id_jabatan'] === $filter_jabatan) $nama_jabatan_terfilter = $j['nama_jabatan']; }
-                        echo "PER JABATAN: " . strtoupper(e($nama_jabatan_terfilter));
-                    } else {
-                        echo "BULANAN";
+                LAPORAN GAJI
+                <?php
+                if ($filter_jabatan) {
+                    $nama_jabatan_terfilter = '';
+                    foreach ($jabatan_list as $j) {
+                        if ($j['id_jabatan'] === $filter_jabatan) $nama_jabatan_terfilter = $j['nama_jabatan'];
                     }
+                    echo "PER JABATAN: " . strtoupper(e($nama_jabatan_terfilter));
+                } else {
+                    echo "BULANAN";
+                }
                 ?>
             </h2>
             <p class="text-gray-600">
@@ -168,43 +170,43 @@ require_once __DIR__ . '/../../includes/header.php';
                             $total_semua_potongan += $row['Total_Potongan'];
                             $total_gaji_bersih += $row['Gaji_Bersih'];
                     ?>
-                    <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-                        <td class="px-4 py-2 text-center"><?= $no++ ?></td>
-                        <td class="px-4 py-2 font-mono text-xs"><?= e($row['Id_Gaji']) ?></td>
-                        <td class="px-4 py-2"><?= e(date('d M Y', strtotime($row['Tgl_Gaji']))) ?></td>
-                        <td class="px-4 py-2 font-medium text-gray-900"><?= e($row['Nama_Karyawan']) ?></td>
-                        <td class="px-4 py-2"><?= e($row['Nama_Jabatan']) ?></td>
-                        <td class="px-4 py-2 text-right">Rp <?= number_format($row['Gaji_Pokok'], 0, ',', '.') ?></td>
-                        <td class="px-4 py-2 text-right">Rp <?= number_format($row['Total_Tunjangan'], 0, ',', '.') ?></td>
-                        <td class="px-4 py-2 text-right">Rp <?= number_format($row['Total_Lembur'], 0, ',', '.') ?></td>
-                        <td class="px-4 py-2 text-right text-red-600">- Rp <?= number_format($row['Total_Potongan'], 0, ',', '.') ?></td>
-                        <td class="px-4 py-2 text-right font-bold text-green-700">Rp <?= number_format($row['Gaji_Bersih'], 0, ',', '.') ?></td>
-                    </tr>
-                    <?php
+                            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2 text-center"><?= $no++ ?></td>
+                                <td class="px-4 py-2 font-mono text-xs"><?= e($row['Id_Gaji']) ?></td>
+                                <td class="px-4 py-2"><?= e(date('d M Y', strtotime($row['Tgl_Gaji']))) ?></td>
+                                <td class="px-4 py-2 font-medium text-gray-900"><?= e($row['Nama_Karyawan']) ?></td>
+                                <td class="px-4 py-2"><?= e($row['Nama_Jabatan']) ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Gaji_Pokok'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Total_Tunjangan'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Total_Lembur'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right text-red-600">- Rp <?= number_format($row['Total_Potongan'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right font-bold text-green-700">Rp <?= number_format($row['Gaji_Bersih'], 0, ',', '.') ?></td>
+                            </tr>
+                        <?php
                         endforeach;
                     else:
-                    ?>
+                        ?>
                         <tr>
                             <td colspan="10" class="text-center py-10 text-gray-500">
                                 <i class="fa-solid fa-folder-open text-3xl text-gray-400 mb-2"></i>
                                 <p>Tidak ada data laporan yang cocok dengan kriteria filter Anda.</p>
                             </td>
                         </tr>
-                    <?php 
+                    <?php
                     endif;
                     ?>
                 </tbody>
                 <?php if (!empty($laporan_data)): ?>
-                <tfoot class="font-bold bg-gray-50">
-                    <tr>
-                        <td colspan="5" class="px-4 py-3 text-right">Total Keseluruhan:</td>
-                        <td class="px-4 py-3 text-right">Rp <?= number_format($total_gaji_pokok, 0, ',', '.') ?></td>
-                        <td class="px-4 py-3 text-right">Rp <?= number_format($total_semua_tunjangan, 0, ',', '.') ?></td>
-                        <td class="px-4 py-3 text-right">Rp <?= number_format($total_semua_lembur, 0, ',', '.') ?></td>
-                        <td class="px-4 py-3 text-right text-red-600">- Rp <?= number_format($total_semua_potongan, 0, ',', '.') ?></td>
-                        <td class="px-4 py-3 text-right text-green-700">Rp <?= number_format($total_gaji_bersih, 0, ',', '.') ?></td>
-                    </tr>
-                </tfoot>
+                    <tfoot class="font-bold bg-gray-50">
+                        <tr>
+                            <td colspan="5" class="px-4 py-3 text-right">Total Keseluruhan:</td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_gaji_pokok, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_semua_tunjangan, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_semua_lembur, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right text-red-600">- Rp <?= number_format($total_semua_potongan, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right text-green-700">Rp <?= number_format($total_gaji_bersih, 0, ',', '.') ?></td>
+                        </tr>
+                    </tfoot>
                 <?php endif; ?>
             </table>
         </div>
@@ -212,22 +214,20 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <script>
-function cetakPDF() {
-    // Ambil parameter filter saat ini
-    const urlParams = new URLSearchParams(window.location.search);
-    const bulan = urlParams.get('bulan') || '';
-    const tahun = urlParams.get('tahun') || '';
-    const jabatan = urlParams.get('jabatan') || '';
-    
-    // Buat URL untuk cetak PDF dengan parameter yang sama
-    let pdfUrl = 'cetak_pdf_final.php?';
-    if (bulan) pdfUrl += 'bulan=' + bulan + '&';
-    if (tahun) pdfUrl += 'tahun=' + tahun + '&';
-    if (jabatan) pdfUrl += 'jabatan=' + jabatan;
-    
-    // Buka di tab baru
-    window.open(pdfUrl, '_blank');
-}
-</script>
+    function cetakPDF() {
+        // Ambil parameter filter saat ini
+        const urlParams = new URLSearchParams(window.location.search);
+        const bulan = urlParams.get('bulan') || '';
+        const tahun = urlParams.get('tahun') || '';
+        const jabatan = urlParams.get('jabatan') || '';
 
-<?php require_once __DIR__ . '/../../includes/footer.php'; ?>
+        // Buat URL untuk cetak PDF dengan parameter yang sama
+        let pdfUrl = 'cetak_pdf_final.php?';
+        if (bulan) pdfUrl += 'bulan=' + bulan + '&';
+        if (tahun) pdfUrl += 'tahun=' + tahun + '&';
+        if (jabatan) pdfUrl += 'jabatan=' + jabatan;
+
+        // Buka di tab baru
+        window.open(pdfUrl, '_blank');
+    }
+</script>

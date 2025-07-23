@@ -38,7 +38,7 @@ $stmt_detail->bind_param("i", $id_gaji);
 $stmt_detail->execute();
 $detail_data_result = $stmt_detail->get_result();
 $detail_data = [];
-while($row = $detail_data_result->fetch_assoc()) {
+while ($row = $detail_data_result->fetch_assoc()) {
     $detail_data[$row['komponen_jenis']][] = $row;
 }
 $stmt_detail->close();
@@ -61,8 +61,8 @@ $jam_lembur = 0; // Tidak ada data lembur di skema baru
 
 // Rincian Potongan
 $detail_potongan_display = [];
-if(isset($detail_data['potongan'])){
-    foreach($detail_data['potongan'] as $p) {
+if (isset($detail_data['potongan'])) {
+    foreach ($detail_data['potongan'] as $p) {
         $detail_potongan_display[] = ['nama' => $p['komponen_nama'], 'jumlah' => $p['jumlah']];
     }
 }
@@ -81,7 +81,7 @@ require_once __DIR__ . '/../includes/header.php';
         <h2 class="text-3xl font-bold font-poppins text-gray-800">DETAIL GAJI</h2>
         <p class="text-gray-500 mt-1">Rincian perhitungan gaji untuk periode <?= date('F Y', strtotime($gaji_data['Tgl_Gaji'])) ?></p>
     </div>
-    
+
     <div class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 border border-gray-200 rounded-lg p-4">
             <div class="flex justify-between border-b pb-2"><span class="text-sm font-medium text-gray-500">Nama Karyawan</span><span class="text-sm font-semibold text-gray-800"><?= e($gaji_data['Nama_Karyawan']) ?></span></div>
@@ -104,8 +104,8 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <h3 class="font-bold text-lg text-red-700 mb-2">POTONGAN</h3>
                 <div class="border rounded-md">
-                    <?php if(!empty($detail_potongan_display)): ?>
-                        <?php foreach($detail_potongan_display as $p): ?>
+                    <?php if (!empty($detail_potongan_display)): ?>
+                        <?php foreach ($detail_potongan_display as $p): ?>
                             <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm"><?= e($p['nama']) ?></span><span class="text-sm font-semibold text-red-600">- Rp <?= number_format($p['jumlah'], 2, ',', '.') ?></span></div>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -114,7 +114,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="flex justify-between py-2.5 px-4 bg-gray-100 rounded-b-md font-bold"><span class="text-red-600">Total Potongan</span><span class="text-red-600">- Rp <?= number_format($gaji_data['Total_Potongan'], 2, ',', '.') ?></span></div>
             </div>
-            
+
             <div>
                 <h3 class="font-bold text-lg text-blue-700 mb-2">RINCIAN KEHADIRAN</h3>
                 <div class="border rounded-md divide-y">
@@ -136,7 +136,3 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 </div>
-
-<?php
-require_once __DIR__ . '/../includes/footer.php';
-?>

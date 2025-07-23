@@ -19,7 +19,7 @@ if (isset($_SESSION['user_id'])) {
     $stmt_guru->execute();
     $guru_data = $stmt_guru->get_result()->fetch_assoc();
     $stmt_guru->close();
-    
+
     if ($guru_data) {
         $id_guru_login = $guru_data['id_guru'];
         // Ambil riwayat gaji
@@ -87,21 +87,24 @@ require_once __DIR__ . '/../../includes/header.php';
                 </thead>
                 <tbody>
                     <?php if (!empty($riwayat_gaji)): foreach ($riwayat_gaji as $row): ?>
-                    <?php
-                        $periode_bulan_en = isset($row['bulan_penggajian']) ? date('F', strtotime($row['bulan_penggajian'].'-01')) : '-';
-                        $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
-                        $periode_tahun = isset($row['bulan_penggajian']) ? date('Y', strtotime($row['bulan_penggajian'].'-01')) : '-';
-                    ?>
-                    <tr class="border-b <?= ($selected_id ? $selected_id : $riwayat_gaji[0]['id']) == $row['id'] ? 'bg-green-50 font-bold' : '' ?>">
-                        <td class="px-4 py-2"><?= e($periode_bulan . ' ' . $periode_tahun) ?></td>
-                        <td class="px-4 py-2">Rp <?= number_format($row['gaji_bersih'], 2, ',', '.') ?></td>
-                        <td class="px-4 py-2">
-                            <a href="slip_gaji.php?id=<?= e($row['id']) ?>" class="text-blue-600 hover:underline mr-2"><i class="fa fa-eye"></i> Lihat</a>
-                            <a href="cetak_slip_gaji_pdf.php?id=<?= e($row['id']) ?>" target="_blank" class="text-red-600 hover:underline"><i class="fa fa-file-pdf"></i> PDF</a>
-                        </td>
-                    </tr>
-                    <?php endforeach; else: ?>
-                    <tr><td colspan="3" class="py-6 text-gray-500">Belum ada data gaji yang dibayarkan.</td></tr>
+                            <?php
+                            $periode_bulan_en = isset($row['bulan_penggajian']) ? date('F', strtotime($row['bulan_penggajian'] . '-01')) : '-';
+                            $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
+                            $periode_tahun = isset($row['bulan_penggajian']) ? date('Y', strtotime($row['bulan_penggajian'] . '-01')) : '-';
+                            ?>
+                            <tr class="border-b <?= ($selected_id ? $selected_id : $riwayat_gaji[0]['id']) == $row['id'] ? 'bg-green-50 font-bold' : '' ?>">
+                                <td class="px-4 py-2"><?= e($periode_bulan . ' ' . $periode_tahun) ?></td>
+                                <td class="px-4 py-2">Rp <?= number_format($row['gaji_bersih'], 2, ',', '.') ?></td>
+                                <td class="px-4 py-2">
+                                    <a href="slip_gaji.php?id=<?= e($row['id']) ?>" class="text-blue-600 hover:underline mr-2"><i class="fa fa-eye"></i> Lihat</a>
+                                    <a href="cetak_slip_gaji_pdf.php?id=<?= e($row['id']) ?>" target="_blank" class="text-red-600 hover:underline"><i class="fa fa-file-pdf"></i> PDF</a>
+                                </td>
+                            </tr>
+                        <?php endforeach;
+                    else: ?>
+                        <tr>
+                            <td colspan="3" class="py-6 text-gray-500">Belum ada data gaji yang dibayarkan.</td>
+                        </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -124,13 +127,22 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php
                 // Mapping bulan Inggris ke Indonesia
                 $bulan_map = [
-                    'January' => 'Januari', 'February' => 'Februari', 'March' => 'Maret', 'April' => 'April',
-                    'May' => 'Mei', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'Agustus',
-                    'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
+                    'January' => 'Januari',
+                    'February' => 'Februari',
+                    'March' => 'Maret',
+                    'April' => 'April',
+                    'May' => 'Mei',
+                    'June' => 'Juni',
+                    'July' => 'Juli',
+                    'August' => 'Agustus',
+                    'September' => 'September',
+                    'October' => 'Oktober',
+                    'November' => 'November',
+                    'December' => 'Desember'
                 ];
-                $periode_bulan_en = isset($slip_data['bulan_penggajian']) ? date('F', strtotime($slip_data['bulan_penggajian'].'-01')) : '-';
+                $periode_bulan_en = isset($slip_data['bulan_penggajian']) ? date('F', strtotime($slip_data['bulan_penggajian'] . '-01')) : '-';
                 $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
-                $periode_tahun = isset($slip_data['bulan_penggajian']) ? date('Y', strtotime($slip_data['bulan_penggajian'].'-01')) : '-';
+                $periode_tahun = isset($slip_data['bulan_penggajian']) ? date('Y', strtotime($slip_data['bulan_penggajian'] . '-01')) : '-';
                 $tanggal_input = isset($slip_data['tgl_input']) ? date('d M Y', strtotime($slip_data['tgl_input'])) : '-';
                 ?>
                 <p class="text-gray-600">Periode: <?= e($periode_bulan . ' ' . $periode_tahun) ?> (Input: <?= e($tanggal_input) ?>)</p>
@@ -211,5 +223,3 @@ require_once __DIR__ . '/../../includes/header.php';
         </div>
     <?php endif; ?>
 </div>
-
-<?php require_once __DIR__ . '/../../includes/footer.php'; ?>

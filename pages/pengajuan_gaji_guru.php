@@ -250,7 +250,3 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 <?php endif; ?>
 
-<?php
-$conn->close();
-require_once __DIR__ . '/../includes/footer.php';
-?>

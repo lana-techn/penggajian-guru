@@ -32,7 +32,7 @@ require_once __DIR__ . '/includes/sidebar.php';
             <?= date('l, d F Y') ?>
         </div>
     </div>
-    
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
             <div class="flex justify-between items-center">
@@ -56,7 +56,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <i class="fas fa-users fa-2x text-white"></i>
                 </div>
             </div>
-             <a href="pages/guru.php" class="inline-block mt-4 text-sm text-blue-50 bg-blue-900/30 px-3 py-1 rounded-full hover:bg-blue-900/50 transition-colors">Kelola Guru <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
+            <a href="pages/guru.php" class="inline-block mt-4 text-sm text-blue-50 bg-blue-900/30 px-3 py-1 rounded-full hover:bg-blue-900/50 transition-colors">Kelola Guru <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
         </div>
         <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
             <div class="flex justify-between items-center">
@@ -65,13 +65,13 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <p class="text-4xl font-bold"><?= e($total_jabatan) ?></p>
                 </div>
                 <div class="bg-white/30 p-4 rounded-full">
-                     <i class="fas fa-briefcase fa-2x text-white"></i>
+                    <i class="fas fa-briefcase fa-2x text-white"></i>
                 </div>
             </div>
-             <a href="pages/jabatan.php" class="inline-block mt-4 text-sm text-indigo-50 bg-indigo-900/30 px-3 py-1 rounded-full hover:bg-indigo-900/50 transition-colors">Kelola Jabatan <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
+            <a href="pages/jabatan.php" class="inline-block mt-4 text-sm text-indigo-50 bg-indigo-900/30 px-3 py-1 rounded-full hover:bg-indigo-900/50 transition-colors">Kelola Jabatan <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
         </div>
     </div>
-    
+
     <div class="bg-white p-6 rounded-xl shadow-md">
         <h3 class="text-xl font-bold text-gray-800 mb-4">Distribusi Guru per Jabatan</h3>
         <div class="h-80 relative">
@@ -83,42 +83,40 @@ require_once __DIR__ . '/includes/sidebar.php';
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('jabatanChart').getContext('2d');
-    fetch('api/get_chart_data.php?type=guru_per_jabatan')
-        .then(response => response.json())
-        .then(data => {
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        label: 'Jumlah Guru',
-                        data: data.values,
-                        backgroundColor: [
-                            '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', 
-                            '#EC4899', '#6366F1', '#14B8A6'
-                        ],
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                        },
-                        title: {
-                            display: true,
-                            text: 'Jumlah Guru Aktif Berdasarkan Jabatan'
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('jabatanChart').getContext('2d');
+        fetch('api/get_chart_data.php?type=guru_per_jabatan')
+            .then(response => response.json())
+            .then(data => {
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Jumlah Guru',
+                            data: data.values,
+                            backgroundColor: [
+                                '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B',
+                                '#EC4899', '#6366F1', '#14B8A6'
+                            ],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Jumlah Guru Aktif Berdasarkan Jabatan'
+                            }
                         }
                     }
-                }
-            });
-        })
-        .catch(error => console.error('Error fetching chart data:', error));
-});
+                });
+            })
+            .catch(error => console.error('Error fetching chart data:', error));
+    });
 </script>
-
-<?php require_once __DIR__ . '/includes/footer.php'; ?>

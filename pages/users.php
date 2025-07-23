@@ -167,7 +167,7 @@ require_once __DIR__ . '/../includes/header.php';
                         $types_string_count .= 's';
                     }
                     $stmt_count = $conn->prepare($count_sql);
-                    if(!empty($types_string_count)) $stmt_count->bind_param($types_string_count, ...$count_params);
+                    if (!empty($types_string_count)) $stmt_count->bind_param($types_string_count, ...$count_params);
                     $stmt_count->execute();
                     $total_records = $stmt_count->get_result()->fetch_assoc()['total'];
                     $total_pages = ceil($total_records / $records_per_page);
@@ -175,38 +175,40 @@ require_once __DIR__ . '/../includes/header.php';
                     $data_params = $count_params;
                     $types_string_data = $types_string_count;
                     $sql = "SELECT * FROM User WHERE username LIKE ?";
-                    if ($akses_filter) { $sql .= " AND akses = ?"; }
+                    if ($akses_filter) {
+                        $sql .= " AND akses = ?";
+                    }
                     $sql .= " ORDER BY akses, username ASC LIMIT ? OFFSET ?";
                     array_push($data_params, $records_per_page, $offset);
                     $types_string_data .= 'ii';
                     $stmt = $conn->prepare($sql);
-                    if(!empty($types_string_data)) $stmt->bind_param($types_string_data, ...$data_params);
+                    if (!empty($types_string_data)) $stmt->bind_param($types_string_data, ...$data_params);
                     $stmt->execute();
                     $result = $stmt->get_result();
-                    if($result->num_rows > 0) {
+                    if ($result->num_rows > 0) {
                         while ($row = $result->fetch_assoc()):
                     ?>
-                    <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 font-mono text-xs"><?= e($row['id_user']) ?></td>
-                        <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['username']) ?></td>
-                        <td class="px-6 py-4">
-                            <span class="px-2.5 py-1 text-xs font-semibold rounded-full 
+                            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-mono text-xs"><?= e($row['id_user']) ?></td>
+                                <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['username']) ?></td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full 
                                 <?= $row['akses'] === 'Admin' ? 'bg-indigo-100 text-indigo-800' : '' ?>
                                 <?= $row['akses'] === 'Kepala Sekolah' ? 'bg-yellow-100 text-yellow-800' : '' ?>
                                 <?= $row['akses'] === 'Guru' ? 'bg-green-100 text-green-800' : '' ?>
                             ">
-                                <?= e($row['akses']) ?>
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            <div class="flex items-center justify-center gap-4">
-                                <a href="users.php?action=edit&id=<?= e($row['id_user']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
-                                <?php if ($row['id_user'] != $_SESSION['user_id']): ?>
-                                <a href="users.php?action=delete&id=<?= e($row['id_user']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus user ini?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
+                                        <?= e($row['akses']) ?>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <div class="flex items-center justify-center gap-4">
+                                        <a href="users.php?action=edit&id=<?= e($row['id_user']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
+                                        <?php if ($row['id_user'] != $_SESSION['user_id']): ?>
+                                            <a href="users.php?action=delete&id=<?= e($row['id_user']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus user ini?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
                     <?php endwhile;
                     } else {
                         echo '<tr><td colspan="4" class="text-center py-5 text-gray-500">Tidak ada data ditemukan.</td></tr>';
@@ -216,7 +218,7 @@ require_once __DIR__ . '/../includes/header.php';
                 </tbody>
             </table>
         </div>
-        <?php 
+        <?php
         echo generate_pagination_links($page, $total_pages, ['action' => 'list', 'search' => $search, 'akses' => $akses_filter]);
         ?>
     </div>
@@ -245,7 +247,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <label for="password" class="block mb-2 text-sm font-medium text-gray-700">Password</label>
                 <input type="password" id="password" name="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" <?= ($action === 'add') ? 'required' : '' ?>>
                 <?php if ($action === 'edit'): ?>
-                <p class="text-xs text-gray-500 mt-1">Kosongkan jika tidak ingin mengubah password.</p>
+                    <p class="text-xs text-gray-500 mt-1">Kosongkan jika tidak ingin mengubah password.</p>
                 <?php endif; ?>
             </div>
             <div class="flex items-center justify-end space-x-4">
@@ -255,7 +257,3 @@ require_once __DIR__ . '/../includes/header.php';
         </form>
     </div>
 <?php endif; ?>
-
-<?php
-require_once __DIR__ . '/../includes/footer.php';
-?>

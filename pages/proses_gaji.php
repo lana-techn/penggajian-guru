@@ -14,9 +14,18 @@ $tahun_min = $conn->query("SELECT MIN(YEAR(tgl_masuk)) as thn FROM Guru")->fetch
 $tahun_opsi = range($tahun_sekarang, $tahun_min);
 
 $bulan_opsi = [
-    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
-    '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
-    '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+    '01' => 'Januari',
+    '02' => 'Februari',
+    '03' => 'Maret',
+    '04' => 'April',
+    '05' => 'Mei',
+    '06' => 'Juni',
+    '07' => 'Juli',
+    '08' => 'Agustus',
+    '09' => 'September',
+    '10' => 'Oktober',
+    '11' => 'November',
+    '12' => 'Desember'
 ];
 
 // --- PROSES TAMBAH DATA GAJI ---
@@ -33,29 +42,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tunjangan_anak = $_POST['tunjangan_anak'] ?? 0;
     $potongan_bpjs = $_POST['potongan_bpjs'] ?? 0;
     $infak = $_POST['infak'] ?? 0;
-            $gaji_kotor = $gaji_pokok + $tunjangan_beras + $tunjangan_kehadiran + $tunjangan_suami_istri + $tunjangan_anak;
-            $total_potongan = $potongan_bpjs + $infak;
-            $gaji_bersih = $gaji_kotor - $total_potongan;
+    $gaji_kotor = $gaji_pokok + $tunjangan_beras + $tunjangan_kehadiran + $tunjangan_suami_istri + $tunjangan_anak;
+    $total_potongan = $potongan_bpjs + $infak;
+    $gaji_bersih = $gaji_kotor - $total_potongan;
     $tgl_input = date('Y-m-d');
-            $id_penggajian = 'PG'.date('ymdHis').$id_guru;
+    $id_penggajian = 'PG' . date('ymdHis') . $id_guru;
 
     // Cek duplikat
-            $cek = $conn->query("SELECT id_penggajian FROM Penggajian WHERE id_guru='".$conn->real_escape_string($id_guru)."' AND bulan_penggajian='".$conn->real_escape_string($bulan)."' AND YEAR(tgl_input)='".$conn->real_escape_string($tahun)."'");
-            if ($cek->num_rows > 0) {
+    $cek = $conn->query("SELECT id_penggajian FROM Penggajian WHERE id_guru='" . $conn->real_escape_string($id_guru) . "' AND bulan_penggajian='" . $conn->real_escape_string($bulan) . "' AND YEAR(tgl_input)='" . $conn->real_escape_string($tahun) . "'");
+    if ($cek->num_rows > 0) {
         set_flash_message('error', 'Data gaji untuk guru dan periode ini sudah ada.');
-            } else {
-                $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param('ssidddddddddsss', $id_penggajian, $id_guru, $masa_kerja, $gaji_pokok, $tunjangan_beras, $tunjangan_kehadiran, $tunjangan_suami_istri, $tunjangan_anak, $potongan_bpjs, $infak, $gaji_kotor, $total_potongan, $gaji_bersih, $tgl_input, $bulan);
+    } else {
+        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('ssidddddddddsss', $id_penggajian, $id_guru, $masa_kerja, $gaji_pokok, $tunjangan_beras, $tunjangan_kehadiran, $tunjangan_suami_istri, $tunjangan_anak, $potongan_bpjs, $infak, $gaji_kotor, $total_potongan, $gaji_bersih, $tgl_input, $bulan);
         if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil ditambahkan.');
         else set_flash_message('error', 'Gagal menambah data gaji: ' . $stmt->error);
-                $stmt->close();
-            }
+        $stmt->close();
+    }
 }
 
 // --- PROSES EDIT DATA GAJI ---
 if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) {
     $edit_id = $_GET['id'];
-    $edit_data = $conn->query("SELECT * FROM Penggajian WHERE id_penggajian='".$conn->real_escape_string($edit_id)."'")->fetch_assoc();
+    $edit_data = $conn->query("SELECT * FROM Penggajian WHERE id_penggajian='" . $conn->real_escape_string($edit_id) . "'")->fetch_assoc();
     if (!$edit_data) {
         set_flash_message('error', 'Data gaji tidak ditemukan.');
         header('Location: proses_gaji.php');
@@ -115,12 +124,26 @@ $filter_tahun = $_GET['tahun'] ?? '';
 $sql = "SELECT p.*, g.nama_guru FROM Penggajian p JOIN Guru g ON p.id_guru = g.id_guru WHERE 1=1";
 $params = [];
 $types = '';
-if ($filter_guru) { $sql .= " AND p.id_guru = ?"; $params[] = $filter_guru; $types .= 's'; }
-if ($filter_bulan) { $sql .= " AND p.bulan_penggajian = ?"; $params[] = $filter_bulan; $types .= 's'; }
-if ($filter_tahun) { $sql .= " AND YEAR(p.tgl_input) = ?"; $params[] = $filter_tahun; $types .= 's'; }
+if ($filter_guru) {
+    $sql .= " AND p.id_guru = ?";
+    $params[] = $filter_guru;
+    $types .= 's';
+}
+if ($filter_bulan) {
+    $sql .= " AND p.bulan_penggajian = ?";
+    $params[] = $filter_bulan;
+    $types .= 's';
+}
+if ($filter_tahun) {
+    $sql .= " AND YEAR(p.tgl_input) = ?";
+    $params[] = $filter_tahun;
+    $types .= 's';
+}
 $sql .= " ORDER BY p.tgl_input DESC";
 $stmt = $conn->prepare($sql);
-if ($types) { $stmt->bind_param($types, ...$params); }
+if ($types) {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -242,7 +265,7 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="flex items-end">
                 <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center"><i class="fa fa-search mr-2"></i>Filter</button>
             </div>
-            </form>
+        </form>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm text-center border border-black" style="font-family: Arial, sans-serif;">
                 <thead style="background:#fff; color:#000;">
@@ -265,31 +288,31 @@ require_once __DIR__ . '/../includes/header.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $no=1; while($row = $result->fetch_assoc()): ?>
-                    <tr style="border-bottom:1px solid #000;">
-                        <td class="px-3 py-2 border border-black text-center"><?= $no++ ?></td>
-                        <td class="px-3 py-2 border border-black text-center"><?= e($row['nama_guru']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center"><?= e($bulan_opsi[$row['bulan_penggajian']] ?? $row['bulan_penggajian']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center"><?= e(date('Y', strtotime($row['tgl_input']))) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['gaji_pokok']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_beras']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_kehadiran']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_suami_istri']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_anak']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['potongan_bpjs']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['infak']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['gaji_kotor']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['total_potongan']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['gaji_bersih']) ?></td>
-                        <td class="px-3 py-2 border border-black text-center">
-                            <a href="proses_gaji.php?action=edit&id=<?= e($row['id_penggajian']) ?>" class="text-blue-600 hover:underline mr-2"><i class="fa fa-edit"></i> Edit</a>
-                            <a href="proses_gaji.php?action=delete&id=<?= e($row['id_penggajian']) ?>&token=<?= $_SESSION['csrf_token'] ?>" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data gaji ini?')"><i class="fa fa-trash"></i> Hapus</a>
-                        </td>
-                    </tr>
+                    <?php $no = 1;
+                    while ($row = $result->fetch_assoc()): ?>
+                        <tr style="border-bottom:1px solid #000;">
+                            <td class="px-3 py-2 border border-black text-center"><?= $no++ ?></td>
+                            <td class="px-3 py-2 border border-black text-center"><?= e($row['nama_guru']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center"><?= e($bulan_opsi[$row['bulan_penggajian']] ?? $row['bulan_penggajian']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center"><?= e(date('Y', strtotime($row['tgl_input']))) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['gaji_pokok']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_beras']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_kehadiran']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_suami_istri']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['tunjangan_anak']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['potongan_bpjs']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['infak']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['gaji_kotor']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['total_potongan']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">Rp <?= number_format($row['gaji_bersih']) ?></td>
+                            <td class="px-3 py-2 border border-black text-center">
+                                <a href="proses_gaji.php?action=edit&id=<?= e($row['id_penggajian']) ?>" class="text-blue-600 hover:underline mr-2"><i class="fa fa-edit"></i> Edit</a>
+                                <a href="proses_gaji.php?action=delete&id=<?= e($row['id_penggajian']) ?>&token=<?= $_SESSION['csrf_token'] ?>" class="text-red-600 hover:underline" onclick="return confirm('Apakah Anda yakin ingin menghapus data gaji ini?')"><i class="fa fa-trash"></i> Hapus</a>
+                            </td>
+                        </tr>
                     <?php endwhile; ?>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-<?php require_once __DIR__ . '/../includes/footer.php'; ?> 

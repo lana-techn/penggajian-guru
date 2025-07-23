@@ -29,7 +29,7 @@ require_once __DIR__ . '/includes/sidebar.php';
             <h1 class="text-3xl font-bold text-gray-800 font-poppins">Dashboard Kepala Sekolah</h1>
             <p class="text-gray-500 mt-1">Ringkasan data penggajian terkini.</p>
         </div>
-         <div class="text-sm text-gray-600 bg-white px-4 py-2 rounded-lg shadow-sm mt-4 sm:mt-0">
+        <div class="text-sm text-gray-600 bg-white px-4 py-2 rounded-lg shadow-sm mt-4 sm:mt-0">
             <i class="fa-solid fa-calendar-day mr-2 text-green-600"></i>
             <?= date('l, d F Y') ?>
         </div>
@@ -46,7 +46,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <i class="fas fa-hourglass-half fa-2x text-white"></i>
                 </div>
             </div>
-             <a href="pages/kepala_sekolah/penggajian_kepala_sekolah.php" class="inline-block mt-4 text-sm text-yellow-50 bg-yellow-900/30 px-3 py-1 rounded-full hover:bg-yellow-900/50 transition-colors">Lihat Pengajuan <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
+            <a href="pages/kepala_sekolah/penggajian_kepala_sekolah.php" class="inline-block mt-4 text-sm text-yellow-50 bg-yellow-900/30 px-3 py-1 rounded-full hover:bg-yellow-900/50 transition-colors">Lihat Pengajuan <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
         </div>
         <div class="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
             <div class="flex justify-between items-center">
@@ -54,7 +54,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <p class="text-lg font-medium text-green-100">Total Guru Aktif</p>
                     <p class="text-4xl font-bold"><?= e($total_guru) ?></p>
                 </div>
-                 <div class="bg-white/30 p-4 rounded-full">
+                <div class="bg-white/30 p-4 rounded-full">
                     <i class="fas fa-users fa-2x text-white"></i>
                 </div>
             </div>
@@ -66,16 +66,16 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <p class="text-lg font-medium text-indigo-100">Total Gaji (<?= date('F Y') ?>)</p>
                     <p class="text-3xl font-bold">Rp <?= number_format($total_gaji_bulan_ini, 0, ',', '.') ?></p>
                 </div>
-                 <div class="bg-white/30 p-4 rounded-full">
+                <div class="bg-white/30 p-4 rounded-full">
                     <i class="fas fa-wallet fa-2x text-white"></i>
                 </div>
             </div>
-             <a href="pages/kepala_sekolah/laporan.php" class="inline-block mt-4 text-sm text-indigo-50 bg-indigo-900/30 px-3 py-1 rounded-full hover:bg-indigo-900/50 transition-colors">Lihat Laporan <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
+            <a href="pages/kepala_sekolah/laporan.php" class="inline-block mt-4 text-sm text-indigo-50 bg-indigo-900/30 px-3 py-1 rounded-full hover:bg-indigo-900/50 transition-colors">Lihat Laporan <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
         </div>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md">
-             <h3 class="text-xl font-bold text-gray-800 mb-4">Tren Pengeluaran Gaji (6 Bulan Terakhir)</h3>
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Tren Pengeluaran Gaji (6 Bulan Terakhir)</h3>
             <div class="h-80 relative">
                 <canvas id="trenGajiChart"></canvas>
             </div>
@@ -90,7 +90,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <i class="fa-solid fa-chevron-right ml-auto text-green-500"></i>
                     </a>
                 </li>
-                 <li>
+                <li>
                     <a href="pages/kepala_sekolah/laporan.php" class="flex items-center p-4 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors group">
                         <i class="fa-solid fa-file-invoice-dollar text-2xl text-blue-600"></i>
                         <span class="ml-4 font-semibold text-blue-800 group-hover:text-blue-900">Laporan Penggajian</span>
@@ -110,62 +110,61 @@ require_once __DIR__ . '/includes/sidebar.php';
 </main>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('trenGajiChart').getContext('2d');
-    fetch('api/get_chart_data.php?type=gaji_per_bulan')
-        .then(response => response.json())
-        .then(data => {
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.labels,
-                    datasets: [{
-                        label: 'Total Gaji Bersih',
-                        data: data.values,
-                        fill: true,
-                        backgroundColor: 'rgba(22, 163, 74, 0.2)',
-                        borderColor: '#16A34A',
-                        tension: 0.3,
-                        pointBackgroundColor: '#16A34A',
-                        pointRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value, index, values) {
-                                    return 'Rp ' + new Intl.NumberFormat('id-ID').format(value);
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('trenGajiChart').getContext('2d');
+        fetch('api/get_chart_data.php?type=gaji_per_bulan')
+            .then(response => response.json())
+            .then(data => {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Total Gaji Bersih',
+                            data: data.values,
+                            fill: true,
+                            backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                            borderColor: '#16A34A',
+                            tension: 0.3,
+                            pointBackgroundColor: '#16A34A',
+                            pointRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value, index, values) {
+                                        return 'Rp ' + new Intl.NumberFormat('id-ID').format(value);
+                                    }
                                 }
                             }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
                         },
-                         tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += 'Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y);
+                                        }
+                                        return label;
                                     }
-                                    if (context.parsed.y !== null) {
-                                        label += 'Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y);
-                                    }
-                                    return label;
                                 }
                             }
                         }
                     }
-                }
-            });
-        })
-        .catch(error => console.error('Error fetching chart data:', error));
-});
+                });
+            })
+            .catch(error => console.error('Error fetching chart data:', error));
+    });
 </script>
-<?php require_once __DIR__ . '/includes/footer.php'; ?>

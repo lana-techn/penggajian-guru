@@ -88,7 +88,7 @@ require_once __DIR__ . '/includes/sidebar.php';
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-500 hover:shadow-xl transition-shadow duration-300">
-             <div class="flex items-start space-x-4">
+            <div class="flex items-start space-x-4">
                 <div class="flex-shrink-0 bg-yellow-100 p-4 rounded-full">
                     <i class="fa-solid fa-circle-info text-yellow-600 text-2xl"></i>
                 </div>
@@ -101,5 +101,3 @@ require_once __DIR__ . '/includes/sidebar.php';
         </div>
     </div>
 </main>
-
-<?php require_once __DIR__ . '/includes/footer.php'; ?>

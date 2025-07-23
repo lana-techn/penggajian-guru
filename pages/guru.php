@@ -114,11 +114,13 @@ require_once __DIR__ . '/../includes/header.php';
                 <i class="fa-solid fa-plus mr-2"></i>Tambah
             </a>
         </div>
-        
+
         <form method="get" action="guru.php" class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <input type="hidden" name="action" value="list">
             <div class="md:col-span-2">
-                <div class="relative"><input type="text" name="search" value="<?= e($search) ?>" placeholder="Cari nama atau NIP guru..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-search text-gray-400"></i></div></div>
+                <div class="relative"><input type="text" name="search" value="<?= e($search) ?>" placeholder="Cari nama atau NIP guru..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fa-solid fa-search text-gray-400"></i></div>
+                </div>
             </div>
             <div>
                 <select name="status" onchange="this.form.submit()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
@@ -133,61 +135,83 @@ require_once __DIR__ . '/../includes/header.php';
             <table class="w-full text-sm text-left text-gray-700">
                 <thead class="text-xs uppercase bg-gray-100 text-gray-600">
                     <tr>
-                        <th class="px-4 py-3">No</th><th class="px-6 py-3">NIP</th><th class="px-6 py-3">Nama Lengkap</th><th class="px-6 py-3">Jabatan</th><th class="px-6 py-3">Tanggal Masuk</th><th class="px-6 py-3">No Telepon</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Status</th><th class="px-6 py-3 text-center">Aksi</th>
+                        <th class="px-4 py-3">No</th>
+                        <th class="px-6 py-3">NIP</th>
+                        <th class="px-6 py-3">Nama Lengkap</th>
+                        <th class="px-6 py-3">Jabatan</th>
+                        <th class="px-6 py-3">Tanggal Masuk</th>
+                        <th class="px-6 py-3">No Telepon</th>
+                        <th class="px-6 py-3">Email</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
                     // Perbaikan query list dan count agar sesuai database.sql
                     echo '<div class="overflow-x-auto">';
-                    $count_params = []; $types_string_count = '';
+                    $count_params = [];
+                    $types_string_count = '';
                     $count_sql = "SELECT COUNT(g.id_guru) as total FROM Guru g WHERE (g.nama_guru LIKE ? OR g.nipm LIKE ? )";
                     $search_param = "%" . $search . "%";
                     array_push($count_params, $search_param, $search_param);
                     $types_string_count .= 'ss';
-                    if ($status_filter) { $count_sql .= " AND g.status_kawin = ?"; array_push($count_params, $status_filter); $types_string_count .= 's'; }
+                    if ($status_filter) {
+                        $count_sql .= " AND g.status_kawin = ?";
+                        array_push($count_params, $status_filter);
+                        $types_string_count .= 's';
+                    }
                     $stmt_count = $conn->prepare($count_sql);
-                    if(!empty($types_string_count)) $stmt_count->bind_param($types_string_count, ...$count_params);
+                    if (!empty($types_string_count)) $stmt_count->bind_param($types_string_count, ...$count_params);
                     $stmt_count->execute();
                     $total_records = $stmt_count->get_result()->fetch_assoc()['total'];
                     $total_pages = ceil($total_records / $records_per_page);
                     $stmt_count->close();
-                    $data_params = $count_params; $types_string_data = $types_string_count;
+                    $data_params = $count_params;
+                    $types_string_data = $types_string_count;
                     $sql = "SELECT g.*, j.nama_jabatan FROM Guru g LEFT JOIN Jabatan j ON g.id_jabatan = j.id_jabatan WHERE (g.nama_guru LIKE ? OR g.nipm LIKE ? )";
-                    if ($status_filter) { $sql .= " AND g.status_kawin = ?"; }
+                    if ($status_filter) {
+                        $sql .= " AND g.status_kawin = ?";
+                    }
                     $sql .= " ORDER BY g.nama_guru ASC LIMIT ? OFFSET ?";
                     array_push($data_params, $records_per_page, $offset);
                     $types_string_data .= 'ii';
                     $stmt = $conn->prepare($sql);
-                    if(!empty($types_string_data)) $stmt->bind_param($types_string_data, ...$data_params);
+                    if (!empty($types_string_data)) $stmt->bind_param($types_string_data, ...$data_params);
                     $stmt->execute();
                     $result = $stmt->get_result();
                     $no = $offset + 1;
-                    if($result->num_rows > 0) { while ($row = $result->fetch_assoc()): ?>
-                    <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-                        <td class="px-4 py-4"><?= $no++ ?></td>
-                        <td class="px-6 py-4 font-mono text-xs"><?= e($row['nipm']) ?></td>
-                        <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['nama_guru']) ?></td>
-                        <td class="px-6 py-4"><?= e($row['nama_jabatan']) ?? 'N/A' ?></td>
-                        <td class="px-6 py-4"><?= e(date('d M Y', strtotime($row['tgl_masuk']))) ?></td>
-                        <td class="px-6 py-4"><?= e($row['no_hp']) ?></td>
-                        <td class="px-6 py-4"><?= e($row['email']) ?></td>
-                        <td class="px-6 py-4"> <span class="px-2.5 py-1 text-xs font-semibold rounded-full"> <?= e($row['status_kawin']) ?> </span> </td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center justify-center gap-4">
-                                <a href="guru.php?action=edit&id=<?= e($row['id_guru']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
-                                <a href="guru.php?action=delete&id=<?= e($row['id_guru']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endwhile; } else { echo '<tr><td colspan="9" class="text-center py-5 text-gray-500">Tidak ada data ditemukan.</td></tr>'; } $stmt->close(); $conn->close();
+                    if ($result->num_rows > 0) {
+                        while ($row = $result->fetch_assoc()): ?>
+                            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-4"><?= $no++ ?></td>
+                                <td class="px-6 py-4 font-mono text-xs"><?= e($row['nipm']) ?></td>
+                                <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['nama_guru']) ?></td>
+                                <td class="px-6 py-4"><?= e($row['nama_jabatan']) ?? 'N/A' ?></td>
+                                <td class="px-6 py-4"><?= e(date('d M Y', strtotime($row['tgl_masuk']))) ?></td>
+                                <td class="px-6 py-4"><?= e($row['no_hp']) ?></td>
+                                <td class="px-6 py-4"><?= e($row['email']) ?></td>
+                                <td class="px-6 py-4"> <span class="px-2.5 py-1 text-xs font-semibold rounded-full"> <?= e($row['status_kawin']) ?> </span> </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex items-center justify-center gap-4">
+                                        <a href="guru.php?action=edit&id=<?= e($row['id_guru']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
+                                        <a href="guru.php?action=delete&id=<?= e($row['id_guru']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                    <?php endwhile;
+                    } else {
+                        echo '<tr><td colspan="9" class="text-center py-5 text-gray-500">Tidak ada data ditemukan.</td></tr>';
+                    }
+                    $stmt->close();
+                    $conn->close();
                     echo '</tbody></table></div>';
                     ?>
                 </tbody>
             </table>
         </div>
-        
-        <?php 
+
+        <?php
         echo generate_pagination_links($page, $total_pages, 'guru.php', ['action' => 'list', 'search' => $search, 'status' => $status_filter]);
         ?>
     </div>
@@ -197,7 +221,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="bg-white p-8 rounded-xl shadow-lg max-w-4xl mx-auto">
         <h2 class="text-2xl font-bold text-gray-800 text-center mb-2 font-poppins"><?= ucfirst($action) ?> Data Guru</h2>
         <p class="text-center text-gray-500 mb-8">Lengkapi semua informasi yang diperlukan.</p>
-        
+
         <form method="POST" action="guru.php">
             <?php csrf_input(); ?>
             <input type="hidden" name="id" value="<?= e($guru_data['id_guru'] ?? '') ?>">
@@ -214,8 +238,8 @@ require_once __DIR__ . '/../includes/header.php';
                     <label for="jabatan_id" class="block mb-2 text-sm font-medium text-gray-700">Jabatan</label>
                     <select id="jabatan_id" name="jabatan_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
                         <option value="">- Pilih Jabatan -</option>
-                        <?php foreach($jabatan_list as $jabatan): ?>
-                        <option value="<?= e($jabatan['id_jabatan']) ?>" <?= (isset($guru_data) && $guru_data['id_jabatan'] == $jabatan['id_jabatan']) ? 'selected' : '' ?>><?= e($jabatan['nama_jabatan']) ?></option>
+                        <?php foreach ($jabatan_list as $jabatan): ?>
+                            <option value="<?= e($jabatan['id_jabatan']) ?>" <?= (isset($guru_data) && $guru_data['id_jabatan'] == $jabatan['id_jabatan']) ? 'selected' : '' ?>><?= e($jabatan['nama_jabatan']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -246,8 +270,8 @@ require_once __DIR__ . '/../includes/header.php';
                     <label for="user_id" class="block mb-2 text-sm font-medium text-gray-700">Akun User (Username)</label>
                     <select id="user_id" name="user_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
                         <option value="">- Pilih Akun User -</option>
-                         <?php foreach($users_list as $user): ?>
-                        <option value="<?= e($user['id_user']) ?>" <?= (isset($guru_data) && $guru_data['id_user'] == $user['id_user']) ? 'selected' : '' ?>><?= e($user['username']) ?></option>
+                        <?php foreach ($users_list as $user): ?>
+                            <option value="<?= e($user['id_user']) ?>" <?= (isset($guru_data) && $guru_data['id_user'] == $user['id_user']) ? 'selected' : '' ?>><?= e($user['username']) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <p class="text-xs text-gray-500 mt-1">Hanya menampilkan akun 'guru' yang belum terikat.</p>
@@ -267,7 +291,3 @@ require_once __DIR__ . '/../includes/header.php';
         </form>
     </div>
 <?php endif; ?>
-
-<?php
-require_once __DIR__ . '/../includes/footer.php';
-?>
