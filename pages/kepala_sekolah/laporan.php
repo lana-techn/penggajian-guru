@@ -8,7 +8,7 @@ requireRole('kepala_sekolah');
 $conn = db_connect();
 
 // Ambil data untuk filter
-$jabatan_list = $conn->query("SELECT id, nama_jabatan FROM jabatan ORDER BY nama_jabatan ASC")->fetch_all(MYSQLI_ASSOC);
+$jabatan_list = $conn->query("SELECT id_jabatan, nama_jabatan FROM Jabatan ORDER BY nama_jabatan ASC")->fetch_all(MYSQLI_ASSOC);
 
 // Ambil filter dari GET request
 $filter_bulan = $_GET['bulan'] ?? '';
@@ -18,39 +18,39 @@ $filter_jabatan = $_GET['jabatan'] ?? '';
 // Bangun query dinamis berdasarkan filter
 $sql = "
     SELECT 
-        g.id as Id_Gaji,
-        k.nama_lengkap as Nama_Karyawan, 
+        p.id_penggajian as Id_Gaji,
+        g.nama_guru as Nama_Karyawan, 
         j.nama_jabatan as Nama_Jabatan, 
-        g.periode_gaji as Tgl_Gaji, 
-        g.total_tunjangan as Total_Tunjangan,
-        0 as Total_Lembur, -- Tidak ada lembur di skema baru
-        g.gaji_pokok as Gaji_Pokok,
-        g.total_potongan as Total_Potongan, 
-        g.gaji_bersih as Gaji_Bersih
-    FROM gaji g
-    JOIN guru k ON g.guru_id = k.id
-    JOIN jabatan j ON k.jabatan_id = j.id
-    WHERE g.status_pembayaran = 'sudah_dibayar'
+        p.tgl_input as Tgl_Gaji, 
+        (p.tunjangan_beras + p.tunjangan_kehadiran + p.tunjangan_suami_istri + p.tunjangan_anak) as Total_Tunjangan,
+        0 as Total_Lembur,
+        p.gaji_pokok as Gaji_Pokok,
+        p.total_potongan as Total_Potongan, 
+        p.gaji_bersih as Gaji_Bersih
+    FROM Penggajian p
+    JOIN Guru g ON p.id_guru = g.id_guru
+    JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
+    WHERE 1=1
 ";
 $params = [];
 $types = '';
 
 if (!empty($filter_bulan)) {
-    $sql .= " AND MONTH(g.periode_gaji) = ?";
+    $sql .= " AND MONTH(p.tgl_input) = ?";
     $params[] = $filter_bulan;
     $types .= 'i';
 }
 if (!empty($filter_tahun)) {
-    $sql .= " AND YEAR(g.periode_gaji) = ?";
+    $sql .= " AND YEAR(p.tgl_input) = ?";
     $params[] = $filter_tahun;
     $types .= 'i';
 }
 if (!empty($filter_jabatan)) {
-    $sql .= " AND j.id = ?";
+    $sql .= " AND j.id_jabatan = ?";
     $params[] = $filter_jabatan;
     $types .= 's';
 }
-$sql .= " ORDER BY g.periode_gaji DESC, k.nama_lengkap ASC";
+$sql .= " ORDER BY p.tgl_input DESC, g.nama_guru ASC";
 
 $stmt = $conn->prepare($sql);
 if (!empty($params)) {
@@ -103,7 +103,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <select name="jabatan" id="jabatan" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500">
                     <option value="">-- Semua Jabatan --</option>
                     <?php foreach ($jabatan_list as $jabatan): ?>
-                        <option value="<?= e($jabatan['Id_Jabatan']) ?>" <?= $filter_jabatan == $jabatan['Id_Jabatan'] ? 'selected' : '' ?>><?= e($jabatan['Nama_Jabatan']) ?></option>
+                        <option value="<?= e($jabatan['id_jabatan']) ?>" <?= $filter_jabatan == $jabatan['id_jabatan'] ? 'selected' : '' ?>><?= e($jabatan['nama_jabatan']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -121,7 +121,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 <?php 
                     if ($filter_jabatan) {
                         $nama_jabatan_terfilter = '';
-                        foreach ($jabatan_list as $j) { if ($j['Id_Jabatan'] === $filter_jabatan) $nama_jabatan_terfilter = $j['Nama_Jabatan']; }
+                        foreach ($jabatan_list as $j) { if ($j['id_jabatan'] === $filter_jabatan) $nama_jabatan_terfilter = $j['nama_jabatan']; }
                         echo "PER JABATAN: " . strtoupper(e($nama_jabatan_terfilter));
                     } else {
                         echo "BULANAN";

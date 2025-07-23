@@ -11,14 +11,14 @@ $nama_guru = 'Guru';
 $guru_id = null;
 if (isset($_SESSION['user_id'])) {
     $user_id = $_SESSION['user_id'];
-    $stmt_guru = $conn->prepare("SELECT id, nama_lengkap FROM guru WHERE user_id = ?");
-    $stmt_guru->bind_param("i", $user_id);
+    $stmt_guru = $conn->prepare("SELECT id_guru, nama_guru FROM Guru WHERE id_user = ?");
+    $stmt_guru->bind_param("s", $user_id);
     $stmt_guru->execute();
     $guru_data = $stmt_guru->get_result()->fetch_assoc();
     $stmt_guru->close();
     if ($guru_data) {
-        $nama_guru = $guru_data['nama_lengkap'];
-        $guru_id = $guru_data['id'];
+        $nama_guru = $guru_data['nama_guru'];
+        $guru_id = $guru_data['id_guru'];
     }
 }
 
@@ -26,12 +26,12 @@ if (isset($_SESSION['user_id'])) {
 $gaji_terakhir = null;
 if ($guru_id) {
     $stmt_gaji = $conn->prepare(
-        "SELECT periode_gaji, gaji_bersih 
-         FROM gaji 
-         WHERE guru_id = ? AND status_pembayaran = 'sudah_dibayar'
-         ORDER BY periode_gaji DESC LIMIT 1"
+        "SELECT bulan_penggajian, gaji_bersih, tgl_input 
+         FROM Penggajian 
+         WHERE id_guru = ? 
+         ORDER BY tgl_input DESC LIMIT 1"
     );
-    $stmt_gaji->bind_param("i", $guru_id);
+    $stmt_gaji->bind_param("s", $guru_id);
     $stmt_gaji->execute();
     $gaji_terakhir = $stmt_gaji->get_result()->fetch_assoc();
     $stmt_gaji->close();
@@ -61,7 +61,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <p class="text-gray-500 text-sm font-medium">Gaji Terakhir Diterima</p>
                     <?php if ($gaji_terakhir): ?>
                         <p class="text-3xl font-bold text-gray-800 mt-1">Rp <?= number_format($gaji_terakhir['gaji_bersih'], 2, ',', '.') ?></p>
-                        <p class="text-xs text-gray-500 mt-1">Periode: <?= e(date('F Y', strtotime($gaji_terakhir['periode_gaji']))) ?></p>
+                        <p class="text-xs text-gray-500 mt-1">Periode: <?= e(date('F Y', strtotime($gaji_terakhir['bulan_penggajian']))) ?></p>
                     <?php else: ?>
                         <p class="text-lg font-semibold text-gray-700 mt-2">Belum ada data gaji yang dibayarkan.</p>
                     <?php endif; ?>

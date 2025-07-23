@@ -7,15 +7,15 @@ requireLogin('kepala_sekolah');
 $conn = db_connect();
 
 // Hitung jumlah pengajuan gaji yang menunggu persetujuan
-$pending_approvals = $conn->query("SELECT COUNT(id) as total FROM gaji WHERE status_pembayaran = 'belum_dibayar'")->fetch_assoc()['total'] ?? 0;
+$pending_approvals = 0; // Kolom status_pembayaran tidak ada di tabel Penggajian
 
 // Hitung jumlah guru aktif
-$total_guru = $conn->query("SELECT COUNT(id) as total FROM guru WHERE status = 'Aktif'")->fetch_assoc()['total'] ?? 0;
+$total_guru = $conn->query("SELECT COUNT(id_guru) as total FROM Guru WHERE 1")->fetch_assoc()['total'] ?? 0;
 
 // Hitung total gaji bersih yang sudah dibayar bulan ini
 $current_month = date('m');
 $current_year = date('Y');
-$total_gaji_bulan_ini = $conn->query("SELECT SUM(gaji_bersih) as total FROM gaji WHERE status_pembayaran = 'sudah_dibayar' AND MONTH(periode_gaji) = $current_month AND YEAR(periode_gaji) = $current_year")->fetch_assoc()['total'] ?? 0;
+$total_gaji_bulan_ini = $conn->query("SELECT SUM(gaji_bersih) as total FROM Penggajian WHERE bulan_penggajian = '$current_month' AND YEAR(tgl_input) = $current_year")->fetch_assoc()['total'] ?? 0;
 
 $conn->close();
 
@@ -95,6 +95,13 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <i class="fa-solid fa-file-invoice-dollar text-2xl text-blue-600"></i>
                         <span class="ml-4 font-semibold text-blue-800 group-hover:text-blue-900">Laporan Penggajian</span>
                         <i class="fa-solid fa-chevron-right ml-auto text-blue-500"></i>
+                    </a>
+                </li>
+                <li>
+                    <a href="pages/kepala_sekolah/tambah_admin.php" class="flex items-center p-4 rounded-lg bg-yellow-50 hover:bg-yellow-100 transition-colors group">
+                        <i class="fa-solid fa-user-plus text-2xl text-yellow-600"></i>
+                        <span class="ml-4 font-semibold text-yellow-800 group-hover:text-yellow-900">Tambah Admin</span>
+                        <i class="fa-solid fa-chevron-right ml-auto text-yellow-500"></i>
                     </a>
                 </li>
             </ul>
