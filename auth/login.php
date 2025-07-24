@@ -5,20 +5,21 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/../includes/functions.php';
 
-// LOGIKA ASLI ANDA (BAGIAN 1): Pengalihan jika sudah login
-// Logika ini saya rapikan sedikit agar lebih konsisten, tanpa mengubah fungsinya.
-if (isset($_SESSION['user_id'])) {
+// LOGIKA PERBAIKAN: Pengalihan jika sudah login dan session lengkap
+if (isset($_SESSION['user_id']) && isset($_SESSION['role'])) {
     $redirect_url = '../index.php'; // URL default
-    if (isset($_SESSION['role'])) {
-        if ($_SESSION['role'] === 'kepala_sekolah') {
-            // Menggunakan nama file yang konsisten seperti pada blok login di bawah
-            $redirect_url = '../index_kepsek.php'; 
-        } elseif ($_SESSION['role'] === 'guru') {
-            $redirect_url = '../index_guru.php';
-        }
+    if ($_SESSION['role'] === 'kepala_sekolah') {
+        $redirect_url = '../index_kepsek.php'; 
+    } elseif ($_SESSION['role'] === 'guru') {
+        $redirect_url = '../index_guru.php';
     }
     header('Location: ' . $redirect_url);
     exit;
+} elseif (isset($_SESSION['user_id']) || isset($_SESSION['role'])) {
+    // Session tidak lengkap, hapus dan tampilkan form login
+    session_unset();
+    session_destroy();
+    session_start();
 }
 
 // LOGIKA ASLI ANDA (BAGIAN 2): Proses login saat form disubmit

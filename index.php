@@ -68,7 +68,7 @@ require_once __DIR__ . '/includes/sidebar.php';
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 lg:mb-8">
         <!-- Total Pengguna Card -->
-        <div class="group bg-gradient-to-br from-green-500 to-green-600 text-white p-4 sm:p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-green-400/20">
+        <div class="group bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 sm:p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-brown-400/20">
             <div class="flex justify-between items-start mb-4">
                 <div class="flex-1 min-w-0">
                     <p class="text-sm sm:text-base font-medium text-green-100 mb-1">Total Pengguna</p>
@@ -86,7 +86,7 @@ require_once __DIR__ . '/includes/sidebar.php';
         </div>
 
         <!-- Guru Aktif Card -->
-        <div class="group bg-gradient-to-br from-blue-500 to-blue-600 text-white p-4 sm:p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-blue-400/20">
+        <div class="group bg-gradient-to-br from-green-500 to-green-600 text-white p-4 sm:p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-green-400/20">
             <div class="flex justify-between items-start mb-4">
                 <div class="flex-1 min-w-0">
                     <p class="text-sm sm:text-base font-medium text-blue-100 mb-1">Guru Aktif</p>
@@ -104,7 +104,7 @@ require_once __DIR__ . '/includes/sidebar.php';
         </div>
 
         <!-- Total Jabatan Card -->
-        <div class="group bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-4 sm:p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-indigo-400/20 sm:col-span-2 lg:col-span-1">
+        <div class="group bg-gradient-to-br from-red-300 to-red-500 text-white p-4 sm:p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-indigo-400/20 sm:col-span-2 lg:col-span-1">
             <div class="flex justify-between items-start mb-4">
                 <div class="flex-1 min-w-0">
                     <p class="text-sm sm:text-base font-medium text-indigo-100 mb-1">Total Jabatan</p>
