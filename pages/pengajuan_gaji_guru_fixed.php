@@ -62,8 +62,8 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="bg-white p-6 rounded-xl shadow-lg">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
-                <h2 class="text-2xl font-bold text-gray-800 font-poppins">Daftar Gaji Karyawan</h2>
-                <p class="text-gray-500 text-sm">Tinjau, proses, dan kelola semua data penggajian.</p>
+                <h2 class="text-2xl font-bold text-gray-800 font-poppins">Daftar Gaji Guru</h2>
+                <p class="text-gray-500 text-sm">Tinjau, proses, dan kelola semua data penggajian guru.</p>
             </div>
             <a href="pengajuan_gaji_guru.php?action=add" class="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center justify-center">
                 <i class="fa-solid fa-plus mr-2"></i>Tambah Pengajuan
@@ -75,9 +75,9 @@ require_once __DIR__ . '/../includes/header.php';
         <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end">
             <input type="hidden" name="action" value="list">
             <div>
-                <label for="filter_karyawan" class="text-sm font-medium text-gray-600">Nama Karyawan</label>
+                <label for="filter_karyawan" class="text-sm font-medium text-gray-600">Nama Guru</label>
                 <select name="karyawan" id="filter_karyawan" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500">
-                    <option value="">Semua Karyawan</option>
+                    <option value="">Semua Guru</option>
                     <?php foreach ($karyawan_list as $k): ?>
                         <option value="<?= e($k['id_guru']) ?>" <?= ($_GET['karyawan'] ?? '') == $k['id_guru'] ? 'selected' : '' ?>><?= e($k['nama_guru']) ?></option>
                     <?php endforeach; ?>
@@ -106,16 +106,17 @@ require_once __DIR__ . '/../includes/header.php';
             <table class="w-full text-sm text-left text-gray-700">
                 <thead class="text-xs uppercase bg-gray-100 text-gray-600">
                     <tr>
-                        <th class="px-6 py-3">ID Gaji</th>
-                        <th class="px-6 py-3">Nama Karyawan</th>
-                        <th class="px-6 py-3">Tanggal Gaji</th>
-                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">ID Penggajian</th>
+                        <th class="px-6 py-3">Nama Guru</th>
+                        <th class="px-6 py-3">Tanggal Input</th>
+                        <th class="px-6 py-3">Bulan Gaji</th>
+                        <th class="px-6 py-3">Gaji Bersih</th>
                         <th class="px-6 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                    $sql = "SELECT p.id_penggajian, g.nama_guru, p.tgl_input, p.bulan_penggajian 
+                    $sql = "SELECT p.id_penggajian, g.nama_guru, p.tgl_input, p.bulan_penggajian, p.gaji_bersih 
                             FROM Penggajian p 
                             JOIN Guru g ON p.id_guru = g.id_guru WHERE 1=1";
                     $params = [];
@@ -151,23 +152,22 @@ require_once __DIR__ . '/../includes/header.php';
                                 <td class="px-6 py-4 font-mono text-xs"><?= e($row['id_penggajian']) ?></td>
                                 <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['nama_guru']) ?></td>
                                 <td class="px-6 py-4"><?= date('d F Y', strtotime($row['tgl_input'])) ?></td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                        Selesai
-                                    </span>
-                                </td>
+                                <td class="px-6 py-4"><?= e($row['bulan_penggajian']) ?></td>
+                                <td class="px-6 py-4 font-semibold text-green-600">Rp <?= number_format($row['gaji_bersih'], 0, ',', '.') ?></td>
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex items-center justify-center gap-2">
                                         <?php
                                         $id_gaji_enc = e($row['id_penggajian']);
-                                        echo "<a href='detail_gaji.php?id={$id_gaji_enc}' class='text-sm text-gray-600 bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300'>Detail</a>";
+                                        $token_enc = e($_SESSION['csrf_token']);
+                                        echo "<a href='detail_gaji_guru.php?id={$id_gaji_enc}' class='text-sm text-blue-600 bg-blue-100 px-3 py-1 rounded-md hover:bg-blue-200'>Detail</a>";
+                                        echo "<a href='pengajuan_gaji_guru.php?action=delete&id={$id_gaji_enc}&token={$token_enc}' onclick='return confirm(\"Yakin ingin menghapus data gaji ini?\")' class='text-sm text-white bg-red-500 px-3 py-1 rounded-md hover:bg-red-600'>Hapus</a>";
                                         ?>
                                     </div>
                                 </td>
                             </tr>
                     <?php endwhile;
                     else:
-                        echo '<tr><td colspan="5" class="text-center py-10 text-gray-500">Tidak ada data gaji yang ditemukan.</td></tr>';
+                        echo '<tr><td colspan="6" class="text-center py-10 text-gray-500">Tidak ada data gaji yang ditemukan.</td></tr>';
                     endif;
                     $stmt->close();
                     ?>
@@ -182,18 +182,18 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="text-center">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100"><i class="fa-solid fa-file-invoice-dollar text-2xl text-green-600"></i></div>
             <h2 class="mt-4 text-2xl font-bold text-gray-800 font-poppins">Tambah Pengajuan Gaji</h2>
-            <p class="mt-2 text-sm text-gray-500">Pilih karyawan dan periode untuk memulai perhitungan gaji.</p>
+            <p class="mt-2 text-sm text-gray-500">Pilih guru dan periode untuk memulai perhitungan gaji.</p>
         </div>
 
-        <form method="POST" action="pengajuan_gaji_guru_fixed.php">
+        <form method="POST" action="proses_gaji.php">
             <?php csrf_input(); ?>
             <div class="space-y-6 mt-8">
                 <div>
-                    <label for="Id_Karyawan" class="block mb-2 text-sm font-medium text-gray-700">Nama Karyawan</label>
-                    <select name="Id_Karyawan" id="Id_Karyawan" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
-                        <option value="" disabled selected>- Pilih Karyawan -</option>
-                        <?php foreach ($karyawan_list as $karyawan): ?>
-                            <option value="<?= e($karyawan['id_guru']) ?>"><?= e($karyawan['nama_guru']) ?></option>
+                    <label for="id_guru" class="block mb-2 text-sm font-medium text-gray-700">Nama Guru</label>
+                    <select name="id_guru" id="id_guru" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        <option value="" disabled selected>- Pilih Guru -</option>
+                        <?php foreach ($karyawan_list as $guru): ?>
+                            <option value="<?= e($guru['id_guru']) ?>"><?= e($guru['nama_guru']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -201,29 +201,16 @@ require_once __DIR__ . '/../includes/header.php';
                     <label for="periode" class="block mb-2 text-sm font-medium text-gray-700">Periode Gaji</label>
                     <input type="month" name="periode" id="periode" value="<?= date('Y-m') ?>" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
                 </div>
-
-                <div>
-                    <label class="block mb-2 text-sm font-medium text-gray-700">Sertakan Tunjangan Hari Raya (THR)?</label>
-                    <div class="flex items-center space-x-6 rounded-lg border border-gray-300 p-4">
-                        <div class="flex items-center">
-                            <input id="tunjangan_ya" name="sertakan_tunjangan" value="1" type="radio" class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
-                            <label for="tunjangan_ya" class="ml-3 block text-sm font-medium text-gray-700">Ya</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input id="tunjangan_tidak" name="sertakan_tunjangan" value="0" type="radio" checked class="h-4 w-4 border-gray-300 text-green-600 focus:ring-green-500">
-                            <label for="tunjangan_tidak" class="ml-3 block text-sm font-medium text-gray-700">Tidak</label>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Pilih "Ya" untuk menambahkan THR sebesar 1x Gaji Pokok.</p>
-                </div>
             </div>
             <div class="flex items-center justify-end space-x-4 mt-8">
                 <a href="pengajuan_gaji_guru.php" class="px-6 py-2.5 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold text-sm transition-colors">Batal</a>
                 <button type="submit" class="w-full sm:w-auto bg-green-600 text-white px-8 py-2.5 rounded-lg hover:bg-green-700 font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-calculator"></i>
-                    Hitung & Tampilkan Detail
+                    Hitung & Proses Gaji
                 </button>
             </div>
         </form>
     </div>
 <?php endif; ?>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

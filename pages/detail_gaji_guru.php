@@ -9,7 +9,7 @@ $id_gaji = $_GET['id'] ?? null;
 
 if (!$id_gaji) {
     set_flash_message('error', 'ID Gaji tidak ditemukan.');
-    header('Location: pengajuan_gaji.php');
+    header('Location: pengajuan_gaji_guru.php');
     exit;
 }
 
