@@ -195,14 +195,33 @@ function logout()
 
 /**
  * Membatasi akses halaman hanya untuk role tertentu.
- * @param string $role Role yang diizinkan ('admin', 'kepala_sekolah', 'guru')
+ * @param string|array $role Role yang diizinkan ('admin', 'kepala_sekolah', 'guru') atau array dari role
  */
 function requireRole($role)
 {
-    if (!isLoggedIn() || !isset($_SESSION['role']) || $_SESSION['role'] !== strtolower($role)) {
+    if (!isLoggedIn() || !isset($_SESSION['role'])) {
         set_flash_message('error', 'Anda tidak memiliki hak akses ke halaman ini.');
         header('Location: ../index.php');
         exit();
+    }
+    
+    $userRole = strtolower($_SESSION['role']);
+    
+    // Handle both string and array inputs
+    if (is_array($role)) {
+        $allowedRoles = array_map('strtolower', $role);
+        if (!in_array($userRole, $allowedRoles)) {
+            set_flash_message('error', 'Anda tidak memiliki hak akses ke halaman ini.');
+            header('Location: ../index.php');
+            exit();
+        }
+    } else {
+        $requiredRole = strtolower($role);
+        if ($userRole !== $requiredRole) {
+            set_flash_message('error', 'Anda tidak memiliki hak akses ke halaman ini.');
+            header('Location: ../index.php');
+            exit();
+        }
     }
 }
 
