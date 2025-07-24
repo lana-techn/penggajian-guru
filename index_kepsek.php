@@ -6,8 +6,7 @@ requireLogin('kepala_sekolah');
 
 $conn = db_connect();
 
-// Hitung jumlah pengajuan gaji yang menunggu persetujuan
-$pending_approvals = 0; // Kolom status_pembayaran tidak ada di tabel Penggajian
+// Dashboard metrics only
 
 // Hitung jumlah guru aktif
 $total_guru = $conn->query("SELECT COUNT(id_guru) as total FROM Guru WHERE 1")->fetch_assoc()['total'] ?? 0;
@@ -35,19 +34,7 @@ require_once __DIR__ . '/includes/sidebar.php';
         </div>
     </div>
     <?php display_flash_message(); ?>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <div class="bg-gradient-to-br from-yellow-500 to-amber-500 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
-            <div class="flex justify-between items-center">
-                <div>
-                    <p class="text-lg font-medium text-yellow-100">Menunggu Persetujuan</p>
-                    <p class="text-4xl font-bold"><?= e($pending_approvals) ?></p>
-                </div>
-                <div class="bg-white/30 p-4 rounded-full">
-                    <i class="fas fa-hourglass-half fa-2x text-white"></i>
-                </div>
-            </div>
-            <a href="pages/kepala_sekolah/penggajian_kepala_sekolah.php" class="inline-block mt-4 text-sm text-yellow-50 bg-yellow-900/30 px-3 py-1 rounded-full hover:bg-yellow-900/50 transition-colors">Lihat Pengajuan <i class="fa-solid fa-arrow-right-long ml-1"></i></a>
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div class="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-6 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300">
             <div class="flex justify-between items-center">
                 <div>
@@ -84,13 +71,6 @@ require_once __DIR__ . '/includes/sidebar.php';
             <h3 class="text-xl font-bold text-gray-800 mb-4">Akses Cepat</h3>
             <ul class="space-y-3">
                 <li>
-                    <a href="pages/kepala_sekolah/penggajian_kepala_sekolah.php" class="flex items-center p-4 rounded-lg bg-green-50 hover:bg-green-100 transition-colors group">
-                        <i class="fa-solid fa-check-to-slot text-2xl text-green-600"></i>
-                        <span class="ml-4 font-semibold text-green-800 group-hover:text-green-900">Persetujuan Gaji</span>
-                        <i class="fa-solid fa-chevron-right ml-auto text-green-500"></i>
-                    </a>
-                </li>
-                <li>
                     <a href="pages/kepala_sekolah/laporan.php" class="flex items-center p-4 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors group">
                         <i class="fa-solid fa-file-invoice-dollar text-2xl text-blue-600"></i>
                         <span class="ml-4 font-semibold text-blue-800 group-hover:text-blue-900">Laporan Penggajian</span>
@@ -98,10 +78,17 @@ require_once __DIR__ . '/includes/sidebar.php';
                     </a>
                 </li>
                 <li>
-                    <a href="pages/kepala_sekolah/tambah_admin.php" class="flex items-center p-4 rounded-lg bg-yellow-50 hover:bg-yellow-100 transition-colors group">
-                        <i class="fa-solid fa-user-plus text-2xl text-yellow-600"></i>
-                        <span class="ml-4 font-semibold text-yellow-800 group-hover:text-yellow-900">Tambah Admin</span>
-                        <i class="fa-solid fa-chevron-right ml-auto text-yellow-500"></i>
+                    <a href="pages/guru.php" class="flex items-center p-4 rounded-lg bg-green-50 hover:bg-green-100 transition-colors group">
+                        <i class="fa-solid fa-users text-2xl text-green-600"></i>
+                        <span class="ml-4 font-semibold text-green-800 group-hover:text-green-900">Data Guru</span>
+                        <i class="fa-solid fa-chevron-right ml-auto text-green-500"></i>
+                    </a>
+                </li>
+                <li>
+                    <a href="pages/users.php" class="flex items-center p-4 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors group">
+                        <i class="fa-solid fa-users-gear text-2xl text-purple-600"></i>
+                        <span class="ml-4 font-semibold text-purple-800 group-hover:text-purple-900">Kelola Pengguna</span>
+                        <i class="fa-solid fa-chevron-right ml-auto text-purple-500"></i>
                     </a>
                 </li>
             </ul>
