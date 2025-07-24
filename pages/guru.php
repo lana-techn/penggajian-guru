@@ -1,15 +1,17 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
-requireRole('admin');
+requireAnyRole(['admin', 'kepala_sekolah']);
+
+$is_kepala_sekolah = ($_SESSION['role'] === 'kepala_sekolah');
 
 $conn = db_connect();
 $page_title = 'Manajemen Guru';
 
 // --- LOGIKA PROSES (CREATE, UPDATE, DELETE) ---
 
-// Proses Tambah & Update
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Proses Tambah & Update (Only for admin)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_kepala_sekolah) {
     if (!validate_csrf_token()) die('Validasi CSRF gagal.');
 
     $id_guru = $_POST['id_guru'] ?? null;
@@ -50,8 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Proses Hapus
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+// Proses Hapus (Only for admin)
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id']) && !$is_kepala_sekolah) {
     if (isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
         $id_guru = $_GET['id'];
         $stmt = $conn->prepare("DELETE FROM Guru WHERE id_guru = ?");
@@ -113,14 +115,21 @@ require_once __DIR__ . '/../includes/header.php';
             <h1 class="text-3xl font-bold text-gray-800 font-poppins"><?= e($page_title) ?></h1>
             <p class="text-gray-500 mt-1">Kelola data, akun, dan informasi pribadi guru.</p>
         </div>
+        <?php if (!$is_kepala_sekolah): ?>
         <button @click="showForm = true; isEdit = false; resetForm()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center transition">
             <i class="fa-solid fa-plus mr-2"></i> Tambah Guru
         </button>
+        <?php else: ?>
+        <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium">
+            <i class="fa-solid fa-eye mr-2"></i> Mode Lihat Saja
+        </div>
+        <?php endif; ?>
     </div>
 
     <?php display_flash_message(); ?>
 
-    <!-- Form Tambah/Edit (Hidden by default) -->
+    <!-- Form Tambah/Edit (Hidden by default) - Only for admin -->
+    <?php if (!$is_kepala_sekolah): ?>
     <div x-show="showForm" x-transition class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-8 border-t-4 border-green-500">
         <h2 class="text-2xl font-bold text-gray-800 mb-4 font-poppins" x-text="isEdit ? 'Edit Data Guru' : 'Tambah Guru Baru'"></h2>
         <form method="POST" action="guru.php">
@@ -209,6 +218,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </form>
     </div>
+    <?php endif; ?>
 
     <!-- Daftar Guru -->
     <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
@@ -246,6 +256,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <td class="px-4 py-3"><?= date("d M Y", strtotime($row['tgl_masuk'])) ?></td>
                                 <td class="px-4 py-3"><?= e($row['no_hp']) ?><br><span class="text-xs text-gray-500"><?= e($row['email']) ?></span></td>
                                 <td class="px-4 py-3 text-center">
+                                    <?php if (!$is_kepala_sekolah): ?>
                                     <div class="flex items-center justify-center space-x-3">
                                         <button @click="editGuru(<?= htmlspecialchars(json_encode($row)) ?>)" class="text-blue-600 hover:text-blue-800" title="Edit">
                                             <i class="fa-solid fa-pencil fa-fw"></i>
@@ -254,6 +265,9 @@ require_once __DIR__ . '/../includes/header.php';
                                             <i class="fa-solid fa-trash fa-fw"></i>
                                         </a>
                                     </div>
+                                    <?php else: ?>
+                                    <span class="text-gray-400 text-sm">Read Only</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
