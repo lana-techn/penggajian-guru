@@ -1,61 +1,28 @@
 <?php
-// 1. SETUP & LOGIKA
 require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
 requireRole('admin');
 
 $conn = db_connect();
-$action = $_GET['action'] ?? 'list';
-$id = $_GET['id'] ?? null;
 $page_title = 'Manajemen Jabatan';
 
-// Logika Pagination & Pencarian
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$search = $_GET['search'] ?? '';
-$records_per_page = 10;
-$offset = ($page - 1) * $records_per_page;
+// --- LOGIKA PROSES (CREATE, UPDATE, DELETE) ---
 
-// --- PROSES HAPUS ---
-if ($action === 'delete' && $id) {
-    if (isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
-        // Cek apakah jabatan masih digunakan oleh guru
-        $stmt_check = $conn->prepare("SELECT COUNT(*) FROM Guru WHERE id_jabatan = ?");
-        $stmt_check->bind_param("s", $id);
-        $stmt_check->execute();
-        $count = $stmt_check->get_result()->fetch_row()[0];
-        $stmt_check->close();
-
-        if ($count > 0) {
-            set_flash_message('error', 'Jabatan tidak bisa dihapus karena masih digunakan oleh guru.');
-        } else {
-            $stmt = $conn->prepare("DELETE FROM Jabatan WHERE id_jabatan = ?");
-            $stmt->bind_param("s", $id);
-            if ($stmt->execute()) set_flash_message('success', 'Data jabatan berhasil dihapus.');
-            else set_flash_message('error', 'Gagal menghapus data jabatan.');
-            $stmt->close();
-        }
-    } else {
-        set_flash_message('error', 'Token keamanan tidak valid.');
-    }
-    header('Location: jabatan.php?action=list');
-    exit;
-}
-
-// --- PROSES TAMBAH & EDIT ---
+// Proses Tambah & Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validate_csrf_token()) die('Validasi CSRF gagal.');
 
     $id_jabatan = $_POST['id_jabatan'] ?? null;
-    $nama_jabatan = trim($_POST['nama_jabatan'] ?? '');
-    $gaji_awal = $_POST['gaji_awal'] ?? '';
-    $kenaikan_pertahun = $_POST['kenaikan_pertahun'] ?? 0;
+    $nama_jabatan = trim($_POST['nama_jabatan']);
+    $gaji_awal = filter_input(INPUT_POST, 'gaji_awal', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION) ?: 0;
+    $kenaikan_pertahun = filter_input(INPUT_POST, 'kenaikan_pertahun', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION) ?: 0;
 
-    if (empty($nama_jabatan) || $gaji_awal === '') {
-        set_flash_message('error', 'Semua kolom wajib diisi.');
+    if (empty($nama_jabatan) || $gaji_awal <= 0) {
+        set_flash_message('error', 'Nama Jabatan dan Gaji Awal wajib diisi.');
     } else {
-        if ($id_jabatan) { // Edit
-            $stmt = $conn->prepare("UPDATE Jabatan SET nama_jabatan = ?, gaji_awal = ?, kenaikan_pertahun = ? WHERE id_jabatan = ?");
-            $stmt->bind_param("sdds", $nama_jabatan, $gaji_awal, $kenaikan_pertahun, $id_jabatan);
+        if ($id_jabatan) { // Update
+            $stmt = $conn->prepare("UPDATE Jabatan SET nama_jabatan=?, gaji_awal=?, kenaikan_pertahun=? WHERE id_jabatan=?");
+            $stmt->bind_param('sdds', $nama_jabatan, $gaji_awal, $kenaikan_pertahun, $id_jabatan);
             $action_text = 'diperbarui';
         } else { // Tambah
             $id_jabatan = 'J' . date('ymdHis');
@@ -64,148 +31,179 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $action_text = 'ditambahkan';
         }
 
-        if ($stmt->execute()) set_flash_message('success', "Jabatan berhasil {$action_text}.");
-        else set_flash_message('error', "Gagal memproses data jabatan: " . $stmt->error);
-
+        if ($stmt->execute()) {
+            set_flash_message('success', "Data jabatan berhasil {$action_text}.");
+        } else {
+            set_flash_message('error', "Gagal memproses data jabatan: " . $stmt->error);
+        }
         $stmt->close();
-        header('Location: jabatan.php?action=list');
-        exit;
     }
+    header('Location: jabatan.php');
+    exit;
 }
 
-$jabatan_data = null;
-if ($action === 'edit' && $id) {
-    $page_title = 'Edit Jabatan';
-    $stmt = $conn->prepare("SELECT * FROM Jabatan WHERE id_jabatan = ?");
-    $stmt->bind_param("s", $id);
-    $stmt->execute();
-    $jabatan_data = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    if (!$jabatan_data) {
-        set_flash_message('error', 'Data jabatan tidak ditemukan.');
-        header('Location: jabatan.php?action=list');
-        exit;
+// Proses Hapus
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    if (isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
+        $id_jabatan = $_GET['id'];
+        // Cek keterkaitan dengan guru
+        $check_stmt = $conn->prepare("SELECT id_guru FROM Guru WHERE id_jabatan = ?");
+        $check_stmt->bind_param('s', $id_jabatan);
+        $check_stmt->execute();
+        if ($check_stmt->get_result()->num_rows > 0) {
+            set_flash_message('error', 'Tidak dapat menghapus jabatan yang masih digunakan oleh data guru.');
+        } else {
+            $stmt = $conn->prepare("DELETE FROM Jabatan WHERE id_jabatan = ?");
+            $stmt->bind_param("s", $id_jabatan);
+            if ($stmt->execute()) {
+                set_flash_message('success', 'Data jabatan berhasil dihapus.');
+            } else {
+                set_flash_message('error', 'Gagal menghapus jabatan.');
+            }
+            $stmt->close();
+        }
+        $check_stmt->close();
+    } else {
+        set_flash_message('error', 'Token keamanan tidak valid.');
     }
-} elseif ($action === 'add') {
-    $page_title = 'Tambah Jabatan';
+    header('Location: jabatan.php');
+    exit;
 }
+
+// --- LOGIKA PENGAMBILAN DATA ---
+$jabatan_result = $conn->query("SELECT * FROM Jabatan ORDER BY nama_jabatan ASC");
 
 generate_csrf_token();
-
-// 2. MEMANGGIL TAMPILAN (VIEW)
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<?php display_flash_message(); ?>
-
-<?php if ($action === 'list'): ?>
-    <div class="bg-white p-6 rounded-xl shadow-lg">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-                <h2 class="text-2xl font-bold text-gray-800 font-poppins">Daftar Jabatan</h2>
-                <p class="text-gray-500 text-sm">Kelola semua jabatan yang tersedia di sekolah.</p>
-            </div>
-            <a href="jabatan.php?action=add" class="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 text-sm font-semibold shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center">
-                <i class="fa-solid fa-plus mr-2"></i>Tambah Jabatan
-            </a>
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="crudPage()">
+    <!-- Tombol Tambah dan Judul Halaman -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 font-poppins"><?= e($page_title) ?></h1>
+            <p class="text-gray-500 mt-1">Kelola jabatan, gaji pokok, dan kenaikan gaji tahunan.</p>
         </div>
+        <button @click="showForm = true; isEdit = false; resetForm()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center transition">
+            <i class="fa-solid fa-plus mr-2"></i> Tambah Jabatan
+        </button>
+    </div>
 
-        <form method="get" action="jabatan.php" class="mb-6">
-            <input type="hidden" name="action" value="list">
-            <div class="relative">
-                <input type="text" name="search" value="<?= e($search) ?>" placeholder="Cari nama jabatan..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i class="fa-solid fa-search text-gray-400"></i>
+    <?php display_flash_message(); ?>
+
+    <!-- Form Tambah/Edit (Hidden by default) -->
+    <div x-show="showForm" x-transition class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-8 border-t-4 border-green-500">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 font-poppins" x-text="isEdit ? 'Edit Jabatan' : 'Tambah Jabatan Baru'"></h2>
+        <form method="POST" action="jabatan.php">
+            <?php csrf_input(); ?>
+            <input type="hidden" name="id_jabatan" x-model="formData.id_jabatan">
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-1">
+                    <label for="nama_jabatan" class="block text-sm font-medium text-gray-700">Nama Jabatan</label>
+                    <input type="text" name="nama_jabatan" x-model="formData.nama_jabatan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" required>
+                </div>
+                <div>
+                    <label for="gaji_awal" class="block text-sm font-medium text-gray-700">Gaji Awal (Rp)</label>
+                    <input type="number" name="gaji_awal" x-model="formData.gaji_awal" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" required>
+                </div>
+                <div>
+                    <label for="kenaikan_pertahun" class="block text-sm font-medium text-gray-700">Kenaikan per Tahun (Rp)</label>
+                    <input type="number" name="kenaikan_pertahun" x-model="formData.kenaikan_pertahun" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
                 </div>
             </div>
-        </form>
 
+            <!-- Tombol Aksi Form -->
+            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                <button type="button" @click="showForm = false" class="bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition">Batal</button>
+                <button type="submit" class="bg-green-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center transition">
+                    <i class="fa fa-save mr-2"></i> <span x-text="isEdit ? 'Simpan Perubahan' : 'Simpan Data'"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Daftar Jabatan -->
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+        <h3 class="text-xl font-bold text-gray-800 mb-4 font-poppins">Daftar Jabatan</h3>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-700">
-                <thead class="text-xs uppercase bg-gray-100 text-gray-600">
+            <table class="min-w-full text-sm text-left text-gray-600">
+                <thead class="bg-gray-100 text-gray-700 uppercase font-poppins text-xs">
                     <tr>
-                        <th class="px-6 py-3">ID</th>
-                        <th class="px-6 py-3">Nama Jabatan</th>
-                        <th class="px-6 py-3">Gaji Pokok</th>
-                        <th class="px-6 py-3">Kenaikan Gaji Tahunan</th>
-                        <th class="px-6 py-3 text-center">Aksi</th>
+                        <th class="px-4 py-3">No</th>
+                        <th class="px-4 py-3">Nama Jabatan</th>
+                        <th class="px-4 py-3 text-right">Gaji Awal</th>
+                        <th class="px-4 py-3 text-right">Kenaikan per Tahun</th>
+                        <th class="px-4 py-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php
-                    // Query untuk mengambil data dengan pagination dan search
-                    $count_sql = "SELECT COUNT(id_jabatan) as total FROM Jabatan WHERE nama_jabatan LIKE ?";
-                    $stmt_count = $conn->prepare($count_sql);
-                    $search_param = "%" . $search . "%";
-                    $stmt_count->bind_param("s", $search_param);
-                    $stmt_count->execute();
-                    $total_records = $stmt_count->get_result()->fetch_assoc()['total'];
-                    $total_pages = ceil($total_records / $records_per_page);
-                    $stmt_count->close();
-
-                    $sql = "SELECT * FROM Jabatan WHERE nama_jabatan LIKE ? ORDER BY nama_jabatan ASC LIMIT ? OFFSET ?";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param("sii", $search_param, $records_per_page, $offset);
-                    $stmt->execute();
-                    $result = $stmt->get_result();
-
-                    if ($result->num_rows > 0) {
-                        while ($row = $result->fetch_assoc()):
-                    ?>
-                            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 font-mono text-xs"><?= e($row['id_jabatan']) ?></td>
-                                <td class="px-6 py-4 font-medium text-gray-900"><?= e($row['nama_jabatan']) ?></td>
-                                <td class="px-6 py-4">Rp <?= number_format($row['gaji_awal'], 2, ',', '.') ?></td>
-                                <td class="px-6 py-4">Rp <?= number_format($row['kenaikan_pertahun'], 2, ',', '.') ?></td>
-                                <td class="px-6 py-4 text-center">
-                                    <div class="flex items-center justify-center gap-4">
-                                        <a href="jabatan.php?action=edit&id=<?= e($row['id_jabatan']) ?>" class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fa-solid fa-pen-to-square"></i></a>
-                                        <a href="jabatan.php?action=delete&id=<?= e($row['id_jabatan']) ?>&token=<?= e($_SESSION['csrf_token']) ?>" class="text-red-600 hover:text-red-800" onclick="return confirm('Yakin ingin menghapus data ini?')" title="Hapus"><i class="fa-solid fa-trash-alt"></i></a>
+                    <?php if ($jabatan_result->num_rows > 0): ?>
+                        <?php $no = 1; while ($row = $jabatan_result->fetch_assoc()): ?>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-4 py-3"><?= $no++ ?></td>
+                                <td class="px-4 py-3 font-semibold text-gray-900"><?= e($row['nama_jabatan']) ?></td>
+                                <td class="px-4 py-3 text-right">Rp <?= number_format($row['gaji_awal'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-3 text-right">Rp <?= number_format($row['kenaikan_pertahun'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-3 text-center">
+                                    <div class="flex items-center justify-center space-x-3">
+                                        <button @click="editJabatan(<?= htmlspecialchars(json_encode($row)) ?>)" class="text-blue-600 hover:text-blue-800" title="Edit">
+                                            <i class="fa-solid fa-pencil fa-fw"></i>
+                                        </button>
+                                        <a href="?action=delete&id=<?= e($row['id_jabatan']) ?>&token=<?= $_SESSION['csrf_token'] ?>" onclick="return confirm('Yakin ingin menghapus jabatan ini?')" class="text-red-600 hover:text-red-800" title="Hapus">
+                                            <i class="fa-solid fa-trash fa-fw"></i>
+                                        </a>
                                     </div>
                                 </td>
                             </tr>
-                    <?php endwhile;
-                    } else {
-                        echo '<tr><td colspan="5" class="text-center py-5 text-gray-500">Tidak ada data ditemukan.</td></tr>';
-                    }
-                    $stmt->close();
-                    $conn->close();
-                    ?>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="5" class="text-center py-10 text-gray-500">
+                                <i class="fa-solid fa-briefcase fa-3x mb-3"></i>
+                                <p>Tidak ada data jabatan yang ditemukan.</p>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
-
-        <?php
-        // Menampilkan pagination
-        echo generate_pagination_links($page, $total_pages, 'jabatan.php', ['action' => 'list', 'search' => $search]);
-        ?>
     </div>
-<?php endif; ?>
+</div>
 
-<?php if ($action === 'add' || $action === 'edit'): ?>
-    <div class="bg-white p-8 rounded-xl shadow-lg max-w-lg mx-auto">
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-2 font-poppins"><?= $action === 'add' ? 'Tambah' : 'Edit' ?> Jabatan</h2>
-        <p class="text-center text-gray-500 mb-8">Isi detail jabatan pada form di bawah ini.</p>
-        <form method="POST" action="jabatan.php">
-            <?php csrf_input(); ?>
-            <input type="hidden" name="id_jabatan" value="<?= e($jabatan_data['id_jabatan'] ?? '') ?>">
+<script>
+function crudPage() {
+    return {
+        showForm: false,
+        isEdit: false,
+        formData: {},
+        
+        init() {
+            this.resetForm();
+        },
 
-            <div class="mb-5">
-                <label for="nama_jabatan" class="block mb-2 text-sm font-medium text-gray-700">Nama Jabatan</label>
-                <input type="text" id="nama_jabatan" name="nama_jabatan" value="<?= e($jabatan_data['nama_jabatan'] ?? '') ?>" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
-            </div>
-            <div class="mb-5">
-                <label for="gaji_awal" class="block mb-2 text-sm font-medium text-gray-700">Gaji Pokok</label>
-                <input type="number" id="gaji_awal" name="gaji_awal" value="<?= e($jabatan_data['gaji_awal'] ?? '') ?>" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required min="0" step="0.01">
-            </div>
-            <div class="mb-8">
-                <label for="kenaikan_pertahun" class="block mb-2 text-sm font-medium text-gray-700">Kenaikan Gaji Tahunan</label>
-                <input type="number" id="kenaikan_pertahun" name="kenaikan_pertahun" value="<?= e($jabatan_data['kenaikan_pertahun'] ?? 0) ?>" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" min="0" step="0.01">
-            </div>
-            <div class="flex items-center justify-end space-x-4">
-                <a href="jabatan.php?action=list" class="px-6 py-2.5 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold text-sm transition-colors">Batal</a>
-                <button type="submit" class="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-semibold text-sm shadow-md hover:shadow-lg transition-all">Simpan</button>
-            </div>
-        </form>
-    </div>
-<?php endif; ?>
+        resetForm() {
+            this.formData = {
+                id_jabatan: null,
+                nama_jabatan: '',
+                gaji_awal: 0,
+                kenaikan_pertahun: 0
+            };
+        },
+
+        editJabatan(jabatanData) {
+            this.isEdit = true;
+            this.formData = {
+                id_jabatan: jabatanData.id_jabatan,
+                nama_jabatan: jabatanData.nama_jabatan,
+                gaji_awal: parseFloat(jabatanData.gaji_awal),
+                kenaikan_pertahun: parseFloat(jabatanData.kenaikan_pertahun)
+            };
+            this.showForm = true;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+}
+</script>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
