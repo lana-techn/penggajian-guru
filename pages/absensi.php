@@ -1,15 +1,18 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
-requireRole('admin');
+requireRole(['admin', 'kepala_sekolah']);
 
 $conn = db_connect();
 $page_title = 'Manajemen Absensi';
 
+// Check if user is Kepala Sekolah (read-only mode)
+$isReadOnlyMode = ($_SESSION['role'] === 'kepala_sekolah');
+
 // --- LOGIKA PROSES (CREATE, UPDATE, DELETE) ---
 
-// Proses Tambah & Update
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Proses Tambah & Update (only for admin)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isReadOnlyMode) {
     if (!validate_csrf_token()) die('Validasi CSRF gagal.');
 
     $id_kehadiran = $_POST['id_kehadiran'] ?? null;
@@ -56,8 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-// Proses Hapus
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+// Proses Hapus (only for admin)
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id']) && !$isReadOnlyMode) {
     if (isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
         $id_kehadiran = $_GET['id'];
         $stmt = $conn->prepare("DELETE FROM Rekap_Kehadiran WHERE id_kehadiran = ?");
@@ -104,17 +107,20 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Tombol Tambah dan Judul Halaman -->
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 font-poppins"><?= e($page_title) ?></h1>
-            <p class="text-gray-500 mt-1">Kelola rekapitulasi absensi bulanan setiap guru.</p>
+            <h1 class="text-3xl font-bold text-gray-800 font-poppins"><?= e($page_title) ?><?php if ($isReadOnlyMode): ?> <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full ml-2">Mode Tampilan</span><?php endif; ?></h1>
+            <p class="text-gray-500 mt-1"><?= $isReadOnlyMode ? 'Lihat rekapitulasi absensi bulanan setiap guru.' : 'Kelola rekapitulasi absensi bulanan setiap guru.' ?></p>
         </div>
+        <?php if (!$isReadOnlyMode): ?>
         <button @click="showForm = true; isEdit = false; resetForm()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center transition">
             <i class="fa-solid fa-plus mr-2"></i> Tambah Rekap
         </button>
+        <?php endif; ?>
     </div>
 
     <?php display_flash_message(); ?>
 
-    <!-- Form Tambah/Edit (Hidden by default) -->
+    <!-- Form Tambah/Edit (Hidden by default, only for admin) -->
+    <?php if (!$isReadOnlyMode): ?>
     <div x-show="showForm" x-transition class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg mb-8 border-t-4 border-green-500">
         <h2 class="text-2xl font-bold text-gray-800 mb-4 font-poppins" x-text="isEdit ? 'Edit Rekap Absensi' : 'Tambah Rekap Baru'"></h2>
         <form method="POST" action="absensi.php">
@@ -167,6 +173,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </form>
     </div>
+    <?php endif; ?>
 
     <!-- Daftar Absensi -->
     <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
@@ -195,7 +202,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <th class="px-4 py-3 text-center">Terlambat</th>
                         <th class="px-4 py-3 text-center">Alfa</th>
                         <th class="px-4 py-3 text-center">Izin</th>
-                        <th class="px-4 py-3 text-center">Aksi</th>
+                        <?php if (!$isReadOnlyMode): ?><th class="px-4 py-3 text-center">Aksi</th><?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -208,6 +215,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <td class="px-4 py-3 text-center"><?= e($row['jml_terlambat']) ?></td>
                                 <td class="px-4 py-3 text-center"><?= e($row['jml_alfa']) ?></td>
                                 <td class="px-4 py-3 text-center"><?= e($row['jml_izin']) ?></td>
+                                <?php if (!$isReadOnlyMode): ?>
                                 <td class="px-4 py-3 text-center">
                                     <div class="flex items-center justify-center space-x-3">
                                         <button @click="editAbsensi(<?= htmlspecialchars(json_encode($row)) ?>)" class="text-blue-600 hover:text-blue-800" title="Edit">
@@ -218,11 +226,12 @@ require_once __DIR__ . '/../includes/header.php';
                                         </a>
                                     </div>
                                 </td>
+                                <?php endif; ?>
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="text-center py-10 text-gray-500">
+                            <td colspan="<?= $isReadOnlyMode ? '6' : '7' ?>" class="text-center py-10 text-gray-500">
                                 <i class="fa-solid fa-calendar-times fa-3x mb-3"></i>
                                 <p>Tidak ada data absensi yang ditemukan.</p>
                             </td>
