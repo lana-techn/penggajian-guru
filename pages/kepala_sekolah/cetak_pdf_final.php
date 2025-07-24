@@ -19,44 +19,44 @@ $filter_tahun = $_GET['tahun'] ?? date('Y');
 $filter_jabatan = $_GET['jabatan'] ?? '';
 
 // Ambil data jabatan untuk nama jabatan
-$jabatan_list = $conn->query("SELECT id, nama_jabatan FROM jabatan ORDER BY nama_jabatan ASC")->fetch_all(MYSQLI_ASSOC);
+$jabatan_list = $conn->query("SELECT id_jabatan, nama_jabatan FROM Jabatan ORDER BY nama_jabatan ASC")->fetch_all(MYSQLI_ASSOC);
 
 // Bangun query dinamis berdasarkan filter
 $sql = "
     SELECT 
-        g.id as Id_Gaji,
-        k.nama_lengkap as Nama_Karyawan, 
+        p.id_penggajian as Id_Gaji,
+        g.nama_guru as Nama_Karyawan, 
         j.nama_jabatan as Nama_Jabatan, 
-        g.periode_gaji as Tgl_Gaji, 
-        g.total_tunjangan as Total_Tunjangan,
+        p.tgl_input as Tgl_Gaji, 
+        (p.tunjangan_suami_istri + p.tunjangan_anak + p.tunjangan_beras + p.tunjangan_kehadiran) as Total_Tunjangan,
         0 as Total_Lembur, -- Tidak ada lembur di skema baru
-        g.gaji_pokok as Gaji_Pokok,
-        g.total_potongan as Total_Potongan, 
-        g.gaji_bersih as Gaji_Bersih
-    FROM gaji g
-    JOIN guru k ON g.guru_id = k.id
-    JOIN jabatan j ON k.jabatan_id = j.id
-    WHERE g.status_pembayaran = 'sudah_dibayar'
+        p.gaji_pokok as Gaji_Pokok,
+        (p.potongan_bpjs + p.infak) as Total_Potongan, 
+        p.gaji_bersih as Gaji_Bersih
+    FROM Penggajian p
+    JOIN Guru g ON p.id_guru = g.id_guru
+    JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
+    WHERE 1=1
 ";
 $params = [];
 $types = '';
 
 if (!empty($filter_bulan)) {
-    $sql .= " AND MONTH(g.periode_gaji) = ?";
+    $sql .= " AND MONTH(p.tgl_input) = ?";
     $params[] = $filter_bulan;
     $types .= 'i';
 }
 if (!empty($filter_tahun)) {
-    $sql .= " AND YEAR(g.periode_gaji) = ?";
+    $sql .= " AND YEAR(p.tgl_input) = ?";
     $params[] = $filter_tahun;
     $types .= 'i';
 }
 if (!empty($filter_jabatan)) {
-    $sql .= " AND j.id = ?";
+    $sql .= " AND j.id_jabatan = ?";
     $params[] = $filter_jabatan;
     $types .= 's';
 }
-$sql .= " ORDER BY g.periode_gaji DESC, k.nama_lengkap ASC";
+$sql .= " ORDER BY p.tgl_input DESC, g.nama_guru ASC";
 
 $stmt = $conn->prepare($sql);
 if (!empty($params)) {
@@ -74,7 +74,7 @@ $judul_laporan = 'LAPORAN GAJI ';
 if ($filter_jabatan) {
     $nama_jabatan_terfilter = '';
     foreach ($jabatan_list as $j) { 
-        if ($j['id'] === $filter_jabatan) 
+        if ($j['id_jabatan'] === $filter_jabatan) 
             $nama_jabatan_terfilter = $j['nama_jabatan']; 
     }
     $judul_laporan .= "PER JABATAN: " . strtoupper($nama_jabatan_terfilter);
@@ -244,14 +244,14 @@ $html = '
         <table class="header-table">
             <tr>
                 <td class="logo-cell">
-                    <div class="logo" style="font-family: serif; font-size: 24px; font-weight: bold; color: #2e7d32; line-height: 1;">KWaS</div>
-                    <div style="font-family: sans-serif; font-size: 12px; color: #2e7d32;">Furniture manufacturer</div>
+                    <div class="logo" style="font-family: serif; font-size: 24px; font-weight: bold; color: #2e7d32; line-height: 1;">SDUMK</div>
+                    <div style="font-family: sans-serif; font-size: 10px; color: #2e7d32;">SD Unggulan</div>
                 </td>
                 <td class="company-info-cell">
-                    <div class="company-name">CV. KARYA WAHANA SENTOSA</div>
-                    <div class="company-address">Jl. Contoh Alamat No. 123, Kota Contoh, Provinsi Contoh 12345</div>
-                    <div class="company-address">Telp: (021) 1234-5678 | Email: info@karyawahana.com</div>
-                    <div class="company-address">Website: www.karyawahana.com</div>
+                    <div class="company-name">SD UNGGULAN MUHAMMADIYAH KRETEK</div>
+                    <div class="company-address">Jl. Raya Kretek, Bantul, Yogyakarta</div>
+                    <div class="company-address">Telp: (0274) 123-4567 | Email: info@sdumkretek.sch.id</div>
+                    <div class="company-address">Website: www.sdumkretek.sch.id</div>
                 </td>
                 <td class="logo-cell"></td>
             </tr>
@@ -331,7 +331,7 @@ $html .= '
                         <div class="signature-space"></div>
                         <div class="signature-line">
                             (...........................)<br>
-                            Pemilik/Manager
+                            Kepala Sekolah
                         </div>
                     </div>
                 </td>
