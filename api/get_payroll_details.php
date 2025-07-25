@@ -39,8 +39,15 @@ if (!$guru_data) {
 $id_jabatan = $guru_data['id_jabatan'];
 
 // 2. Ambil data tunjangan (hanya untuk suami/istri) & rekap kehadiran
-$tunjangan_data = $conn->execute_query("SELECT tunjangan_suami_istri FROM Tunjangan WHERE id_jabatan = ?", [$id_jabatan])->fetch_assoc() ?? [];
-$kehadiran_data = $conn->execute_query("SELECT jml_terlambat FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?", [$id_guru, $bulan, $tahun])->fetch_assoc();
+$tunjangan_stmt = $conn->prepare("SELECT tunjangan_suami_istri FROM Tunjangan WHERE id_jabatan = ?");
+$tunjangan_stmt->bind_param('s', $id_jabatan);
+$tunjangan_stmt->execute();
+$tunjangan_data = $tunjangan_stmt->get_result()->fetch_assoc() ?? [];
+
+$kehadiran_stmt = $conn->prepare("SELECT jml_terlambat FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?");
+$kehadiran_stmt->bind_param('sss', $id_guru, $bulan, $tahun);
+$kehadiran_stmt->execute();
+$kehadiran_data = $kehadiran_stmt->get_result()->fetch_assoc();
 $jml_terlambat = $kehadiran_data['jml_terlambat'] ?? 0;
 
 // --- MULAI PERHITUNGAN ---
