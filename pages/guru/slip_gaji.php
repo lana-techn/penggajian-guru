@@ -67,49 +67,86 @@ $conn->close();
 require_once __DIR__ . '/../../includes/header.php';
 ?>
 
-<div class="space-y-8">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-800 font-poppins">Slip Gaji</h2>
-            <p class="text-gray-500 text-sm">Rincian pendapatan dan potongan gaji Anda.</p>
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print mb-8">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-800 font-poppins flex items-center gap-3">
+                    <i class="fa-solid fa-receipt text-green-600"></i>
+                    Slip Gaji
+                </h2>
+                <p class="text-gray-600 text-sm mt-2">Rincian pendapatan dan potongan gaji Anda.</p>
+            </div>
         </div>
-    </div>
-    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 mb-8">
-        <h3 class="text-lg font-bold text-gray-700 mb-4">Riwayat Gaji</h3>
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-center border border-black">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="px-4 py-2">Periode</th>
-                        <th class="px-4 py-2">Gaji Bersih</th>
-                        <th class="px-4 py-2">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (!empty($riwayat_gaji)): foreach ($riwayat_gaji as $row): ?>
-                            <?php
-                            $periode_bulan_en = isset($row['bulan_penggajian']) ? date('F', strtotime($row['bulan_penggajian'] . '-01')) : '-';
-                            $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
-                            $periode_tahun = isset($row['bulan_penggajian']) ? date('Y', strtotime($row['bulan_penggajian'] . '-01')) : '-';
-                            ?>
-                            <tr class="border-b <?= ($selected_id ? $selected_id : $riwayat_gaji[0]['id']) == $row['id'] ? 'bg-green-50 font-bold' : '' ?>">
-                                <td class="px-4 py-2"><?= e($periode_bulan . ' ' . $periode_tahun) ?></td>
-                                <td class="px-4 py-2">Rp <?= number_format($row['gaji_bersih'], 2, ',', '.') ?></td>
-                                <td class="px-4 py-2">
-                                    <a href="slip_gaji.php?id=<?= e($row['id']) ?>" class="text-blue-600 hover:underline mr-2"><i class="fa fa-eye"></i> Lihat</a>
-                                    <a href="cetak_slip_gaji_pdf.php?id=<?= e($row['id']) ?>" target="_blank" class="text-red-600 hover:underline"><i class="fa fa-file-pdf"></i> PDF</a>
+        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 mb-8">
+            <div class="flex items-center gap-3 mb-6">
+                <i class="fa-solid fa-history text-blue-600 text-xl"></i>
+                <h3 class="text-xl font-bold text-gray-800">Riwayat Gaji Anda</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-left font-semibold rounded-tl-lg">Periode</th>
+                            <th class="px-6 py-4 text-center font-semibold">Gaji Bersih</th>
+                            <th class="px-6 py-4 text-center font-semibold rounded-tr-lg">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <?php if (!empty($riwayat_gaji)): foreach ($riwayat_gaji as $index => $row): ?>
+                                <?php
+                                $bulan_map = [
+                                    'January' => 'Januari', 'February' => 'Februari', 'March' => 'Maret', 'April' => 'April',
+                                    'May' => 'Mei', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'Agustus',
+                                    'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
+                                ];
+                                $periode_bulan_en = isset($row['bulan_penggajian']) ? date('F', strtotime($row['bulan_penggajian'] . '-01')) : '-';
+                                $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
+                                $periode_tahun = isset($row['bulan_penggajian']) ? date('Y', strtotime($row['bulan_penggajian'] . '-01')) : '-';
+                                $is_selected = ($selected_id ? $selected_id : $riwayat_gaji[0]['id']) == $row['id'];
+                                ?>
+                                <tr class="hover:bg-blue-50 transition-colors duration-200 <?= $is_selected ? 'bg-green-100 border-l-4 border-green-500' : '' ?>">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-2 h-2 bg-blue-500 rounded-full <?= $is_selected ? 'bg-green-500' : '' ?>"></div>
+                                            <div>
+                                                <div class="font-semibold text-gray-800"><?= e($periode_bulan . ' ' . $periode_tahun) ?></div>
+                                                <div class="text-xs text-gray-500"><?= date('d M Y', strtotime($row['tgl_input'])) ?></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="text-lg font-bold text-green-600">Rp <?= number_format($row['gaji_bersih'], 0, ',', '.') ?></span>
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <a href="slip_gaji.php?id=<?= e($row['id']) ?>" 
+                                               class="inline-flex items-center gap-1 px-3 py-2 bg-blue-500 text-white text-xs font-semibold rounded-lg hover:bg-blue-600 transition-colors duration-200">
+                                                <i class="fa fa-eye"></i> Lihat
+                                            </a>
+                                            <a href="cetak_slip_gaji_pdf.php?id=<?= e($row['id']) ?>" target="_blank" 
+                                               class="inline-flex items-center gap-1 px-3 py-2 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-600 transition-colors duration-200">
+                                                <i class="fa fa-file-pdf"></i> PDF
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach;
+                        else: ?>
+                            <tr>
+                                <td colspan="3" class="py-16 text-center">
+                                    <div class="flex flex-col items-center justify-center">
+                                        <i class="fa-solid fa-inbox text-6xl text-gray-300 mb-4"></i>
+                                        <h4 class="text-lg font-semibold text-gray-600 mb-2">Belum Ada Riwayat Gaji</h4>
+                                        <p class="text-gray-500">Riwayat gaji Anda akan muncul di sini setelah proses penggajian.</p>
+                                    </div>
                                 </td>
                             </tr>
-                        <?php endforeach;
-                    else: ?>
-                        <tr>
-                            <td colspan="3" class="py-6 text-gray-500">Belum ada data gaji yang dibayarkan.</td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
     <?php
     $total_tunjangan = 0;
     if ($slip_data) {
@@ -222,4 +259,5 @@ require_once __DIR__ . '/../../includes/header.php';
             <p class="text-gray-500 mt-2">Slip gaji Anda akan tersedia di sini setelah proses penggajian selesai dan disetujui/dibayarkan.</p>
         </div>
     <?php endif; ?>
+    </div>
 </div>

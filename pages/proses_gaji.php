@@ -27,9 +27,20 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     if (!$guru_data) return null;
 
     $id_jabatan = $guru_data['id_jabatan'];
-    $tunjangan_data = $conn->execute_query("SELECT * FROM Tunjangan WHERE id_jabatan = ?", [$id_jabatan])->fetch_assoc() ?? [];
-    $potongan_data = $conn->execute_query("SELECT * FROM Potongan WHERE id_jabatan = ?", [$id_jabatan])->fetch_assoc() ?? [];
-    $kehadiran_data = $conn->execute_query("SELECT jml_terlambat FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?", [$id_guru, $bulan, $tahun])->fetch_assoc();
+    $tunjangan_stmt = $conn->prepare("SELECT * FROM Tunjangan WHERE id_jabatan = ?");
+    $tunjangan_stmt->bind_param('s', $id_jabatan);
+    $tunjangan_stmt->execute();
+    $tunjangan_data = $tunjangan_stmt->get_result()->fetch_assoc() ?? [];
+    
+    $potongan_stmt = $conn->prepare("SELECT * FROM Potongan WHERE id_jabatan = ?");
+    $potongan_stmt->bind_param('s', $id_jabatan);
+    $potongan_stmt->execute();
+    $potongan_data = $potongan_stmt->get_result()->fetch_assoc() ?? [];
+    
+    $kehadiran_stmt = $conn->prepare("SELECT jml_terlambat FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?");
+    $kehadiran_stmt->bind_param('sss', $id_guru, $bulan, $tahun);
+    $kehadiran_stmt->execute();
+    $kehadiran_data = $kehadiran_stmt->get_result()->fetch_assoc();
     $jml_terlambat = $kehadiran_data['jml_terlambat'] ?? 0;
 
     $gaji = [];
@@ -92,9 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_guru'])) {
             set_flash_message('error', "Data gaji untuk guru ini pada periode $bulan_opsi[$bulan] $tahun sudah ada.");
         } else {
             $id_penggajian_baru = 'PG' . date('ymdHis') . $id_guru;
+            $no_slip_gaji = 'SG' . date('ym') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
             $status_validasi = 'Belum Valid';
-            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian, status_validasi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('ssddddddddddssss', $id_penggajian_baru, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['tunjangan_beras'], $calculated_gaji['tunjangan_kehadiran'], $calculated_gaji['tunjangan_suami_istri'], $calculated_gaji['tunjangan_anak'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan, $status_validasi);
+            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian, status_validasi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('sssddddddddddssss', $id_penggajian_baru, $no_slip_gaji, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['tunjangan_beras'], $calculated_gaji['tunjangan_kehadiran'], $calculated_gaji['tunjangan_suami_istri'], $calculated_gaji['tunjangan_anak'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan, $status_validasi);
             if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil ditambahkan.');
             else set_flash_message('error', 'Gagal menambah data gaji: ' . $stmt->error);
         }
@@ -103,21 +115,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_guru'])) {
     exit;
 }
 
-// --- PROSES HAPUS, VALIDASI ---
-if (isset($_GET['action']) && isset($_GET['id']) && isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
-    $action = $_GET['action'];
-    $id = $_GET['id'];
-    if ($action === 'delete') {
-        $stmt = $conn->prepare("DELETE FROM Penggajian WHERE id_penggajian = ?");
-        $stmt->bind_param('s', $id);
-        if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil dihapus.');
-        else set_flash_message('error', 'Gagal menghapus data gaji.');
-    } elseif ($action === 'validasi') {
-        $stmt = $conn->prepare("UPDATE Penggajian SET status_validasi='Valid' WHERE id_penggajian = ?");
-        $stmt->bind_param('s', $id);
-        if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil divalidasi.');
-        else set_flash_message('error', 'Gagal validasi data gaji.');
+// --- PROSES UPDATE STATUS ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+    if (!validate_csrf_token()) die('Validasi CSRF gagal.');
+    
+    $id_penggajian = $_POST['id_penggajian'];
+    $new_status = $_POST['status_validasi'];
+    
+    // Cek apakah id_penggajian ada di database
+    $cek_stmt = $conn->prepare("SELECT id_penggajian FROM Penggajian WHERE id_penggajian = ?");
+    $cek_stmt->bind_param('s', $id_penggajian);
+    $cek_stmt->execute();
+    $cek_result = $cek_stmt->get_result();
+    
+    if ($cek_result->num_rows === 0) {
+        set_flash_message('error', 'ID Gaji tidak ditemukan.');
+    } else {
+        $stmt = $conn->prepare("UPDATE Penggajian SET status_validasi = ? WHERE id_penggajian = ?");
+        $stmt->bind_param('ss', $new_status, $id_penggajian);
+        
+        if ($stmt->execute()) {
+            set_flash_message('success', 'Status gaji berhasil diupdate.');
+        } else {
+            set_flash_message('error', 'Gagal mengupdate status gaji.');
+        }
     }
+    
+    header('Location: proses_gaji.php');
+    exit;
+}
+
+// --- PROSES HAPUS ---
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id']) && isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
+    $id = $_GET['id'];
+    $stmt = $conn->prepare("DELETE FROM Penggajian WHERE id_penggajian = ?");
+    $stmt->bind_param('s', $id);
+    if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil dihapus.');
+    else set_flash_message('error', 'Gagal menghapus data gaji.');
+    
     header('Location: proses_gaji.php');
     exit;
 }
@@ -273,7 +308,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
         <h3 class="text-xl font-bold text-gray-800 mb-4 font-poppins">Data Gaji Guru</h3>
         <!-- Filter -->
-        <form method="GET" action="" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-end">
+        <form method="GET" action="" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border">
             <div class="md:col-span-1">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Guru</label>
                 <select name="guru" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500">
@@ -305,58 +340,112 @@ require_once __DIR__ . '/../includes/header.php';
                 </select>
             </div>
             <div class="flex items-end">
-                <button type="submit" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center justify-center"><i class="fa fa-search mr-2"></i>Filter</button>
+                <button type="submit" class="w-full bg-green-600 text-white px-4 py-2.5 rounded-lg shadow-md hover:bg-green-700 font-semibold flex items-center justify-center transition-colors duration-200">
+                    <i class="fa fa-search mr-2"></i>Filter Data
+                </button>
             </div>
         </form>
 
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-left text-gray-600">
-                <thead class="bg-gray-100 text-gray-700 uppercase font-poppins">
+        <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-200">
+            <table class="min-w-full text-sm text-left text-gray-600 divide-y divide-gray-200">
+                <thead class="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 uppercase font-poppins text-xs">
                     <tr>
-                        <th class="px-4 py-3">No</th>
-                        <th class="px-4 py-3">Nama Guru</th>
-                        <th class="px-4 py-3">Periode</th>
-                        <th class="px-4 py-3 text-right">Gaji Bersih</th>
-                        <th class="px-4 py-3 text-center">Status</th>
-                        <th class="px-4 py-3 text-center">Aksi</th>
+                        <th class="px-3 py-4 text-center font-semibold">No</th>
+                        <th class="px-3 py-4 text-center font-semibold">No Slip Gaji</th>
+                        <th class="px-4 py-4 text-left font-semibold">Nama Guru</th>
+                        <th class="px-3 py-4 text-center font-semibold">Periode</th>
+                        <th class="px-3 py-4 text-center font-semibold">Tunj. Beras</th>
+                        <th class="px-3 py-4 text-center font-semibold">Tunj. Hadir</th>
+                        <th class="px-3 py-4 text-center font-semibold">Gaji Kotor</th>
+                        <th class="px-3 py-4 text-center font-semibold">Potongan</th>
+                        <th class="px-3 py-4 text-center font-semibold">Gaji Bersih</th>
+                        <th class="px-3 py-4 text-center font-semibold">Status</th>
+                        <th class="px-4 py-4 text-center font-semibold">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($result->num_rows > 0): ?>
                         <?php $no = 1; while ($row = $result->fetch_assoc()): ?>
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="px-4 py-3"><?= $no++ ?></td>
-                                <td class="px-4 py-3 font-semibold"><?= e($row['nama_guru']) ?></td>
-                                <td class="px-4 py-3"><?= e($bulan_opsi[$row['bulan_penggajian']] ?? '') . ' ' . e($row['payroll_year']) ?></td>
-                                <td class="px-4 py-3 text-right font-semibold text-green-600">Rp <?= number_format($row['gaji_bersih'], 0, ',', '.') ?></td>
-                                <td class="px-4 py-3 text-center">
-                                    <span class="px-3 py-1 rounded-full text-xs font-semibold"
-                                          :class="{ 'bg-green-100 text-green-800': '<?= $row['status_validasi'] ?>' === 'Valid', 'bg-yellow-100 text-yellow-800': '<?= $row['status_validasi'] ?>' !== 'Valid' }">
-                                        <?= e($row['status_validasi']) ?>
+                            <tr class="border-b border-gray-200 hover:bg-blue-50 transition-colors duration-200">
+                                <td class="px-3 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
+                                <td class="px-3 py-4 text-center">
+                                    <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
+                                        <?= e($row['no_slip_gaji'] ?? 'SG' . date('ym') . str_pad($no-1, 4, '0', STR_PAD_LEFT)) ?>
                                     </span>
                                 </td>
-                                <td class="px-4 py-3 text-center">
-                                    <div class="flex items-center justify-center space-x-2">
-                                        <button @click="editGaji(<?= htmlspecialchars(json_encode($row)) ?>)" class="text-blue-600 hover:text-blue-800" title="Edit">
+                                <td class="px-4 py-4">
+                                    <div class="font-semibold text-gray-800"><?= e($row['nama_guru']) ?></div>
+                                </td>
+                                <td class="px-3 py-4 text-center text-gray-600">
+                                    <span class="text-sm"><?= e($bulan_opsi[$row['bulan_penggajian']] ?? '') ?></span>
+                                    <div class="text-xs text-gray-500"><?= e($row['payroll_year']) ?></div>
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <span class="text-sm font-medium text-orange-600">
+                                        <?= number_format($row['tunjangan_beras'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <span class="text-sm font-medium text-purple-600">
+                                        <?= number_format($row['tunjangan_kehadiran'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <span class="text-sm font-semibold text-blue-600">
+                                        <?= number_format($row['gaji_kotor'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <span class="text-sm font-medium text-red-600">
+                                        <?= number_format($row['total_potongan'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <span class="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
+                                        <?= number_format($row['gaji_bersih'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <form method="POST" action="" class="inline-block">
+                                        <?php csrf_input(); ?>
+                                        <input type="hidden" name="update_status" value="1">
+                                        <input type="hidden" name="id_penggajian" value="<?= e($row['id_penggajian']) ?>">
+                                        <select name="status_validasi" onchange="this.form.submit()" class="text-xs px-2 py-1 rounded-lg border focus:outline-none focus:ring-2 focus:ring-green-500 <?= $row['status_validasi'] === 'Valid' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-yellow-100 text-yellow-800 border-yellow-300' ?>">
+                                            <option value="Belum Valid" <?= $row['status_validasi'] === 'Belum Valid' ? 'selected' : '' ?>>Belum Valid</option>
+                                            <option value="Valid" <?= $row['status_validasi'] === 'Valid' ? 'selected' : '' ?>>Valid</option>
+                                        </select>
+                                    </form>
+                                </td>
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center justify-center space-x-1">
+                                        <button onclick="printSlipGaji('<?= e($row['id_penggajian']) ?>')" 
+                                                class="bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                                title="Cetak Slip Gaji">
+                                            <i class="fa-solid fa-print"></i>
+                                        </button>
+                                        <button @click="editGaji(<?= htmlspecialchars(json_encode($row)) ?>)" 
+                                                class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                                title="Edit Data">
                                             <i class="fa-solid fa-pencil"></i>
                                         </button>
-                                        <a href="?action=delete&id=<?= e($row['id_penggajian']) ?>&token=<?= $_SESSION['csrf_token'] ?>" onclick="return confirm('Yakin ingin menghapus data ini?')" class="text-red-600 hover:text-red-800" title="Hapus">
+                                        <a href="?action=delete&id=<?= e($row['id_penggajian']) ?>&token=<?= $_SESSION['csrf_token'] ?>" 
+                                           onclick="return confirm('Yakin ingin menghapus data ini?')" 
+                                           class="bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                           title="Hapus Data">
                                             <i class="fa-solid fa-trash"></i>
                                         </a>
-                                        <?php if ($row['status_validasi'] !== 'Valid'): ?>
-                                            <a href="?action=validasi&id=<?= e($row['id_penggajian']) ?>&token=<?= $_SESSION['csrf_token'] ?>" onclick="return confirm('Yakin ingin memvalidasi gaji ini?')" class="text-green-600 hover:text-green-800" title="Validasi">
-                                                <i class="fa-solid fa-check-circle"></i>
-                                            </a>
-                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="6" class="text-center py-10 text-gray-500">
-                                <i class="fa-solid fa-folder-open fa-3x mb-3"></i>
-                                <p>Tidak ada data gaji yang ditemukan.</p>
+                            <td colspan="11" class="text-center py-16 text-gray-500">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="fa-solid fa-folder-open fa-4x mb-4 text-gray-300"></i>
+                                    <p class="text-lg font-medium text-gray-600">Tidak ada data gaji yang ditemukan</p>
+                                    <p class="text-sm text-gray-400 mt-1">Silakan tambah data gaji baru atau sesuaikan filter pencarian</p>
+                                </div>
                             </td>
                         </tr>
                     <?php endif; ?>
@@ -367,6 +456,12 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
+// Fungsi untuk mencetak slip gaji
+function printSlipGaji(idPenggajian) {
+    // Buka halaman cetak slip gaji di tab baru
+    window.open(`../reports/slip_gaji.php?id=${idPenggajian}`, '_blank');
+}
+
 function gajiPage() {
     return {
         showForm: false,
