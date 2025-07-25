@@ -44,12 +44,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Standarisasi role agar konsisten di seluruh aplikasi
                 $_SESSION['role'] = strtolower(str_replace(' ', '_', $user['akses']));
                 
+                // Debugging - Log role mapping
+                error_log("Login berhasil - Username: {$user['username']}, Akses DB: {$user['akses']}, Role Session: {$_SESSION['role']}");
+                
                 $redirect_url = '../index.php'; // URL default
                 if ($_SESSION['role'] === 'kepala_sekolah') {
                     $redirect_url = '../index_kepsek.php';
                 } elseif ($_SESSION['role'] === 'guru') {
                     $redirect_url = '../index_guru.php';
                 }
+                
+                error_log("Redirect ke: $redirect_url");
                 header('Location: ' . $redirect_url);
                 exit;
             }
