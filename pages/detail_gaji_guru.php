@@ -9,7 +9,7 @@ $id_gaji = $_GET['id'] ?? null;
 
 if (!$id_gaji) {
     set_flash_message('error', 'ID Gaji tidak ditemukan.');
-    header('Location: pengajuan_gaji_guru.php');
+    header('Location: laporan_admin_guru.php');
     exit;
 }
 
@@ -28,7 +28,7 @@ $stmt_gaji->close();
 
 if (!$gaji_data) {
     set_flash_message('error', 'Data gaji dengan ID tersebut tidak ditemukan.');
-    header('Location: pengajuan_gaji.php');
+    header('Location: laporan_admin.php');
     exit;
 }
 
@@ -132,7 +132,7 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
 
         <div class="flex items-center justify-end pt-6">
-            <a href="pengajuan_gaji.php" class="px-6 py-2.5 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold text-sm transition-colors">Kembali ke Daftar Gaji</a>
+            <a href="laporan_admin.php" class="px-6 py-2.5 rounded-lg text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold text-sm transition-colors">Kembali ke Daftar Gaji</a>
         </div>
     </div>
 </div>

@@ -55,7 +55,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
             <div class="flex space-x-2">
                 <button type="submit" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold">Tampilkan</button>
-                <a href="pengajuan_gaji_guru.php" class="w-full text-center bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold">Reset</a>
+                <a href="laporan_admin.php" class="w-full text-center bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold">Reset</a>
             </div>
         </form>
 
