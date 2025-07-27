@@ -55,17 +55,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_kepala_sekolah) {
 // Proses Hapus (Only for admin)
 if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id']) && !$is_kepala_sekolah) {
     if (isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
-        $id_guru = $_GET['id'];
-        $stmt = $conn->prepare("DELETE FROM Guru WHERE id_guru = ?");
-        $stmt->bind_param("s", $id_guru);
-        if ($stmt->execute()) {
-            set_flash_message('success', 'Data guru berhasil dihapus.');
-        } else {
-            set_flash_message('error', 'Gagal menghapus data guru.');
+        $id_guru = trim($_GET['id']);
+        
+        // Validasi ID guru tidak kosong
+        if (empty($id_guru)) {
+            set_flash_message('error', 'ID guru tidak valid.');
+            header('Location: guru.php');
+            exit;
         }
-        $stmt->close();
+        
+        // Cek apakah guru benar-benar ada di database
+        $check_stmt = $conn->prepare("SELECT nama_guru FROM Guru WHERE id_guru = ?");
+        $check_stmt->bind_param("s", $id_guru);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
+        
+        if ($check_result->num_rows === 0) {
+            $check_stmt->close();
+            set_flash_message('error', 'Data guru tidak ditemukan.');
+            header('Location: guru.php');
+            exit;
+        }
+        
+        $guru_data = $check_result->fetch_assoc();
+        $nama_guru = $guru_data['nama_guru'];
+        $check_stmt->close();
+        
+        // Hitung jumlah data terkait yang akan terhapus
+        $count_penggajian_stmt = $conn->prepare("SELECT COUNT(*) as total FROM penggajian WHERE id_guru = ?");
+        $count_penggajian_stmt->bind_param("s", $id_guru);
+        $count_penggajian_stmt->execute();
+        $penggajian_result = $count_penggajian_stmt->get_result();
+        $penggajian_count = $penggajian_result->fetch_assoc()['total'];
+        $count_penggajian_stmt->close();
+        
+        $count_kehadiran_stmt = $conn->prepare("SELECT COUNT(*) as total FROM rekap_kehadiran WHERE id_guru = ?");
+        $count_kehadiran_stmt->bind_param("s", $id_guru);
+        $count_kehadiran_stmt->execute();
+        $kehadiran_result = $count_kehadiran_stmt->get_result();
+        $kehadiran_count = $kehadiran_result->fetch_assoc()['total'];
+        $count_kehadiran_stmt->close();
+        
+        // Mulai transaksi untuk memastikan integritas data
+        $conn->begin_transaction();
+        
+        try {
+            // Step 1: Hapus semua data penggajian yang terkait dengan guru ini terlebih dahulu
+            $stmt_penggajian = $conn->prepare("DELETE FROM penggajian WHERE id_guru = ?");
+            $stmt_penggajian->bind_param("s", $id_guru);
+            
+            if (!$stmt_penggajian->execute()) {
+                throw new Exception("Gagal menghapus data penggajian: " . $stmt_penggajian->error);
+            }
+            
+            $deleted_penggajian = $stmt_penggajian->affected_rows;
+            $stmt_penggajian->close();
+            
+            // Step 2: Hapus semua data rekap kehadiran yang terkait dengan guru ini
+            $stmt_kehadiran = $conn->prepare("DELETE FROM rekap_kehadiran WHERE id_guru = ?");
+            $stmt_kehadiran->bind_param("s", $id_guru);
+            
+            if (!$stmt_kehadiran->execute()) {
+                throw new Exception("Gagal menghapus data rekap kehadiran: " . $stmt_kehadiran->error);
+            }
+            
+            $deleted_kehadiran = $stmt_kehadiran->affected_rows;
+            $stmt_kehadiran->close();
+            
+            // Step 3: Hapus data guru
+            $stmt_guru = $conn->prepare("DELETE FROM Guru WHERE id_guru = ?");
+            $stmt_guru->bind_param("s", $id_guru);
+            
+            if (!$stmt_guru->execute()) {
+                throw new Exception("Gagal menghapus data guru: " . $stmt_guru->error);
+            }
+            
+            if ($stmt_guru->affected_rows === 0) {
+                throw new Exception("Tidak ada data guru yang dihapus. Data mungkin sudah tidak ada.");
+            }
+            
+            $stmt_guru->close();
+            
+            // Step 4: Commit transaksi jika semua berhasil
+            $conn->commit();
+            
+            // Step 5: Tampilkan pesan sukses yang detail
+            $success_message = "✅ Data guru '{$nama_guru}' berhasil dihapus.";
+            $deleted_items = [];
+            
+            if ($deleted_penggajian > 0) {
+                $deleted_items[] = "{$deleted_penggajian} data penggajian";
+            }
+            
+            if ($deleted_kehadiran > 0) {
+                $deleted_items[] = "{$deleted_kehadiran} data kehadiran";
+            }
+            
+            if (!empty($deleted_items)) {
+                $success_message .= " (" . implode(", ", $deleted_items) . " terkait juga telah dihapus)";
+            }
+            
+            set_flash_message('success', $success_message);
+            
+        } catch (Exception $e) {
+            // Rollback jika ada error
+            $conn->rollback();
+            set_flash_message('error', '❌ Gagal menghapus data guru: ' . $e->getMessage());
+        }
     } else {
-        set_flash_message('error', 'Token keamanan tidak valid.');
+        set_flash_message('error', '🔒 Token keamanan tidak valid. Silakan coba lagi.');
     }
     header('Location: guru.php');
     exit;
@@ -261,7 +359,7 @@ require_once __DIR__ . '/../includes/header.php';
                                         <button @click="editGuru(<?= htmlspecialchars(json_encode($row)) ?>)" class="text-blue-600 hover:text-blue-800" title="Edit">
                                             <i class="fa-solid fa-pencil fa-fw"></i>
                                         </button>
-                                        <a href="?action=delete&id=<?= e($row['id_guru']) ?>&token=<?= $_SESSION['csrf_token'] ?>" onclick="return confirm('Yakin ingin menghapus guru ini? Tindakan ini tidak dapat dibatalkan.')" class="text-red-600 hover:text-red-800" title="Hapus">
+                                        <a href="?action=delete&id=<?= e($row['id_guru']) ?>&token=<?= $_SESSION['csrf_token'] ?>" onclick="event.preventDefault(); handleDelete(this, '<?= e($row['nama_guru']) ?>', '<?= e($row['id_guru']) ?>')" class="text-red-600 hover:text-red-800" title="Hapus">
                                             <i class="fa-solid fa-trash fa-fw"></i>
                                         </a>
                                     </div>
@@ -291,6 +389,70 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <script>
+// Function untuk handle delete dengan async confirmation
+async function handleDelete(linkElement, namaGuru, idGuru) {
+    const confirmed = await confirmDelete(namaGuru, idGuru);
+    if (confirmed) {
+        window.location.href = linkElement.href;
+    }
+}
+
+// Function untuk konfirmasi delete dengan AJAX check
+async function confirmDelete(namaGuru, idGuru) {
+    try {
+        // Ambil jumlah data penggajian yang akan terhapus menggunakan fetch
+        const response = await fetch(`check_penggajian_count.php?id_guru=${encodeURIComponent(idGuru)}`);
+        const data = await response.json();
+        
+        let message = `⚠️ PERINGATAN HAPUS DATA!\n\n`;
+        message += `Guru: ${namaGuru}\n`;
+        
+        if (data.success) {
+            const penggajianCount = data.penggajian_count || 0;
+            const kehadiranCount = data.kehadiran_count || 0;
+            const totalRelated = data.total_related_data || 0;
+            
+            if (totalRelated > 0) {
+                message += `\n📊 DATA TERKAIT YANG AKAN IKUT TERHAPUS:\n`;
+                if (penggajianCount > 0) {
+                    message += `• ${penggajianCount} data penggajian\n`;
+                }
+                if (kehadiranCount > 0) {
+                    message += `• ${kehadiranCount} data rekap kehadiran\n`;
+                }
+                message += `\n⚠️ DAMPAK:\n`;
+                message += `• Data guru "${namaGuru}" akan dihapus permanen\n`;
+                if (penggajianCount > 0) {
+                    message += `• ${penggajianCount} riwayat penggajian akan hilang selamanya\n`;
+                }
+                if (kehadiranCount > 0) {
+                    message += `• ${kehadiranCount} rekap kehadiran akan hilang selamanya\n`;
+                }
+            } else {
+                message += `\n✅ Tidak ada data terkait (penggajian/kehadiran)\n`;
+                message += `\n⚠️ DAMPAK:\n`;
+                message += `• Hanya data guru "${namaGuru}" yang akan dihapus\n`;
+            }
+        } else {
+            message += `\n❌ Tidak dapat memverifikasi data terkait\n`;
+            message += `\n⚠️ DAMPAK:\n`;
+            message += `• Data guru "${namaGuru}" akan dihapus\n`;
+            message += `• Semua data terkait (penggajian/kehadiran) akan ikut terhapus\n`;
+        }
+        
+        message += `\n🚨 TINDAKAN INI TIDAK DAPAT DIBATALKAN!\n`;
+        message += `\nApakah Anda yakin ingin melanjutkan?`;
+        
+        return confirm(message);
+        
+    } catch (error) {
+        console.error('Error checking penggajian data:', error);
+        // Fallback ke konfirmasi standar jika AJAX gagal
+        const message = `⚠️ PERINGATAN!\n\nMenghapus guru "${namaGuru}" akan secara otomatis menghapus SEMUA data penggajian yang terkait.\n\nApakah Anda yakin ingin melanjutkan?\nTindakan ini tidak dapat dibatalkan!`;
+        return confirm(message);
+    }
+}
+
 function crudPage() {
     return {
         showForm: false,
