@@ -38,11 +38,16 @@ if (!$guru_data) {
 
 $id_jabatan = $guru_data['id_jabatan'];
 
-// 2. Ambil data tunjangan (hanya untuk suami/istri) & rekap kehadiran
-$tunjangan_stmt = $conn->prepare("SELECT tunjangan_suami_istri FROM Tunjangan WHERE id_jabatan = ?");
+// 2. Ambil data tunjangan dan potongan
+$tunjangan_stmt = $conn->prepare("SELECT * FROM Tunjangan WHERE id_jabatan = ?");
 $tunjangan_stmt->bind_param('s', $id_jabatan);
 $tunjangan_stmt->execute();
 $tunjangan_data = $tunjangan_stmt->get_result()->fetch_assoc() ?? [];
+
+$potongan_stmt = $conn->prepare("SELECT * FROM Potongan WHERE id_jabatan = ? ORDER BY id_potongan DESC LIMIT 1");
+$potongan_stmt->bind_param('s', $id_jabatan);
+$potongan_stmt->execute();
+$potongan_data = $potongan_stmt->get_result()->fetch_assoc() ?? [];
 
 $kehadiran_stmt = $conn->prepare("SELECT jml_terlambat FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?");
 $kehadiran_stmt->bind_param('sss', $id_guru, $bulan, $tahun);
@@ -84,9 +89,9 @@ $response['tunjangan_anak'] = $jml_anak_tunjangan * 100000;
 // b) Tunjangan Kehadiran (Dihitung Otomatis)
 $response['tunjangan_kehadiran'] = ($jml_terlambat > 5) ? 0 : (100000 - ($jml_terlambat * 5000));
 
-// Potongan (Persentase Tetap dari Gaji Pokok)
-$persentase_bpjs = 2; // Aturan: 2%
-$persentase_infak = 2; // Aturan: 2%
+// Potongan (Ambil dari database dengan fallback ke default)
+$persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2);
+$persentase_infak = (float)($potongan_data['infak'] ?? 2);
 
 $response['potongan_bpjs'] = $gaji_pokok * ($persentase_bpjs / 100);
 $response['infak'] = $gaji_pokok * ($persentase_infak / 100);
