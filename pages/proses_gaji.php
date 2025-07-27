@@ -32,7 +32,7 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $tunjangan_stmt->execute();
     $tunjangan_data = $tunjangan_stmt->get_result()->fetch_assoc() ?? [];
     
-    $potongan_stmt = $conn->prepare("SELECT * FROM Potongan WHERE id_jabatan = ?");
+    $potongan_stmt = $conn->prepare("SELECT * FROM Potongan WHERE id_jabatan = ? ORDER BY id_potongan DESC LIMIT 1");
     $potongan_stmt->bind_param('s', $id_jabatan);
     $potongan_stmt->execute();
     $potongan_data = $potongan_stmt->get_result()->fetch_assoc() ?? [];
@@ -44,26 +44,40 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $jml_terlambat = $kehadiran_data['jml_terlambat'] ?? 0;
 
     $gaji = [];
-    $gaji['gaji_pokok'] = (float)($guru_data['gaji_pokok'] ?? 0);
-    $gaji['tunjangan_beras'] = (float)($tunjangan_data['tunjangan_beras'] ?? 0);
+    
+    // Masa Kerja dan Gaji Pokok (dengan kenaikan tahunan)
+    $tgl_masuk = new DateTime($guru_data['tgl_masuk']);
+    $tgl_proses = new DateTime("$tahun-$bulan-01");
+    $masa_kerja = $tgl_masuk->diff($tgl_proses)->y;
+    $gaji['masa_kerja'] = $masa_kerja;
+    
+    $gaji_awal = (float)($guru_data['gaji_pokok'] ?? 0);
+    $kenaikan_tahunan = 50000;
+    $gaji['gaji_pokok'] = $gaji_awal + ($masa_kerja * $kenaikan_tahunan);
+    
+    // Tunjangan Tetap
+    $gaji['tunjangan_beras'] = 50000; // Nilai tetap
+    
+    // Tunjangan Suami/Istri
     $tunjangan_suami_istri = 0;
-    if (in_array($guru_data['status_kawin'], ['Kawin', 'Menikah'])) {
+    if (in_array($guru_data['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
         $tunjangan_suami_istri = (float)($tunjangan_data['tunjangan_suami_istri'] ?? 0);
     }
     $gaji['tunjangan_suami_istri'] = $tunjangan_suami_istri;
+    
+    // Tunjangan Anak (maks 2 anak)
     $jml_anak_tunjangan = min((int)($guru_data['jml_anak'] ?? 0), 2);
-    $gaji['tunjangan_anak'] = $jml_anak_tunjangan * (float)($tunjangan_data['tunjangan_anak'] ?? 0);
+    $gaji['tunjangan_anak'] = $jml_anak_tunjangan * 100000; // 100k per anak
+    
+    // Tunjangan Kehadiran
     $gaji['tunjangan_kehadiran'] = ($jml_terlambat > 5) ? 0 : (100000 - ($jml_terlambat * 5000));
     
-    $persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 0);
-    $persentase_infak = (float)($potongan_data['infak'] ?? 0);
+    // Potongan - gunakan persentase dari database atau nilai default
+    $persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2); // Default 2% jika tidak ada di DB
+    $persentase_infak = (float)($potongan_data['infak'] ?? 2); // Default 2% jika tidak ada di DB
 
     $gaji['potongan_bpjs'] = $gaji['gaji_pokok'] * ($persentase_bpjs / 100);
     $gaji['infak'] = $gaji['gaji_pokok'] * ($persentase_infak / 100);
-
-    $tgl_masuk = new DateTime($guru_data['tgl_masuk']);
-    $tgl_proses = new DateTime("$tahun-$bulan-01");
-    $gaji['masa_kerja'] = $tgl_masuk->diff($tgl_proses)->y;
 
     $gaji['gaji_kotor'] = $gaji['gaji_pokok'] + $gaji['tunjangan_beras'] + $gaji['tunjangan_kehadiran'] + $gaji['tunjangan_suami_istri'] + $gaji['tunjangan_anak'];
     $gaji['total_potongan'] = $gaji['potongan_bpjs'] + $gaji['infak'];
