@@ -176,9 +176,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <?php if (!$isReadOnlyMode): ?>
                                 <td class="px-4 py-3 text-center">
                                     <div class="flex items-center justify-center space-x-3">
-                                        <button @click="editTunjangan(<?= htmlspecialchars(json_encode($row)) ?>)" class="text-blue-600 hover:text-blue-800" title="Edit">
-                                            <i class="fa-solid fa-pencil fa-fw"></i>
-                                        </button>
+                                        <span class="text-gray-400 text-sm">Read Only</span>
                                         <a href="?action=delete&id=<?= e($row['id_tunjangan']) ?>&token=<?= $_SESSION['csrf_token'] ?>" onclick="return confirm('Yakin ingin menghapus data ini?')" class="text-red-600 hover:text-red-800" title="Hapus">
                                             <i class="fa-solid fa-trash fa-fw"></i>
                                         </a>
