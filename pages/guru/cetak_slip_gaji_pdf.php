@@ -42,22 +42,57 @@ $bulan_map = [
     'May' => 'Mei', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'Agustus',
     'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
 ];
-$bulan_nama_db = isset($slip_data['bulan_penggajian']) ? date('F', strtotime($slip_data['bulan_penggajian'].'-01')) : '-';
-$bulan_gaji = $bulan_map[$bulan_nama_db] ?? $bulan_nama_db;
-$tahun_gaji = isset($slip_data['bulan_penggajian']) ? date('Y', strtotime($slip_data['bulan_penggajian'].'-01')) : '-';
+
+// Fungsi untuk format tanggal Indonesia
+function formatTanggalIndonesia($tanggal) {
+    $bulan_map = [
+        'January' => 'Januari', 'February' => 'Februari', 'March' => 'Maret', 'April' => 'April',
+        'May' => 'Mei', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'Agustus',
+        'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
+    ];
+    
+    $bulan_en = date('F', strtotime($tanggal));
+    $bulan_id = $bulan_map[$bulan_en] ?? $bulan_en;
+    
+    return date('d', strtotime($tanggal)) . ' ' . $bulan_id . ' ' . date('Y', strtotime($tanggal));
+}
+
+// Perbaiki perhitungan periode gaji
+$bulan_gaji = '-';
+$tahun_gaji = '-';
+
+if (isset($slip_data['bulan_penggajian']) && !empty($slip_data['bulan_penggajian'])) {
+    // Coba format YYYY-MM
+    if (preg_match('/^\d{4}-\d{2}$/', $slip_data['bulan_penggajian'])) {
+        $bulan_nama_db = date('F', strtotime($slip_data['bulan_penggajian'] . '-01'));
+        $bulan_gaji = $bulan_map[$bulan_nama_db] ?? $bulan_nama_db;
+        $tahun_gaji = date('Y', strtotime($slip_data['bulan_penggajian'] . '-01'));
+    } else {
+        // Fallback ke tgl_input
+        $bulan_nama_db = date('F', strtotime($slip_data['tgl_input']));
+        $bulan_gaji = $bulan_map[$bulan_nama_db] ?? $bulan_nama_db;
+        $tahun_gaji = date('Y', strtotime($slip_data['tgl_input']));
+    }
+} else {
+    // Jika tidak ada bulan_penggajian, gunakan tgl_input
+    $bulan_nama_db = date('F', strtotime($slip_data['tgl_input']));
+    $bulan_gaji = $bulan_map[$bulan_nama_db] ?? $bulan_nama_db;
+    $tahun_gaji = date('Y', strtotime($slip_data['tgl_input']));
+}
 
 // Ambil data presensi untuk periode gaji terkait (ubah ke Rekap_Kehadiran)
+$bulan_presensi = $slip_data['bulan_penggajian'] ?? date('Y-m', strtotime($slip_data['tgl_input']));
+$tahun_presensi = $tahun_gaji;
+
 $stmt_presensi = $conn->prepare("SELECT jml_terlambat, jml_izin, jml_alfa FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?");
-$stmt_presensi->bind_param("ssi", $slip_data['id_guru'], $slip_data['bulan_penggajian'], $tahun_gaji);
+$stmt_presensi->bind_param("ssi", $slip_data['id_guru'], $bulan_presensi, $tahun_presensi);
 $stmt_presensi->execute();
 $presensi_data = $stmt_presensi->get_result()->fetch_assoc();
 $stmt_presensi->close();
 $conn->close();
 $kehadiran_hari = ($presensi_data['jml_terlambat'] ?? 0) + ($presensi_data['jml_izin'] ?? 0) + ($presensi_data['jml_alfa'] ?? 0);
 
-// Buat HTML untuk PDF
-$logo_path = __DIR__ . '/../../assets/images/logo.png';
-$logo_base64 = (file_exists($logo_path) && is_readable($logo_path)) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logo_path)) : '';
+// Header teks di tengah tanpa logo
 
 $html = '
 <!DOCTYPE html>
@@ -69,7 +104,7 @@ $html = '
         body { font-family: "Arial", sans-serif; font-size: 11px; }
         .slip-container { border: 2px solid #000; padding: 0; max-width: 600px; margin: 0 auto; }
         .kop { text-align: center; border-bottom: 2px solid #000; padding: 8px 8px 2px 8px; }
-        .kop-logo { float: left; width: 70px; height: 70px; margin-right: 10px; }
+        .kop-logo { float: left; width: 70px; height: 70px; margin-right: 10px; object-fit: contain; }
         .kop-title { font-size: 14px; font-weight: bold; }
         .kop-sub { font-size: 12px; }
         .kop-contact { font-size: 10px; margin-top: 2px; }
@@ -90,13 +125,11 @@ $html = '
 <body>
     <div class="slip-container">
         <div class="kop">
-            '.($logo_base64 ? '<img src="'.$logo_base64.'" class="kop-logo">' : '<div class="kop-logo" style="border:1px solid #888;display:inline-block;width:70px;height:70px;"></div>').'
-            <div style="margin-left:80px;">
+            <div style="text-align:center;">
                 <div class="kop-title">Yayasan Pimpinan Daerah Muhammadiyah (PDM) Kab. Bantul</div>
                 <div class="kop-sub">SD Unggulan Muhammadiyah Kretek</div>
                 <div class="kop-contact">Email : sdumuhkretek@gmail.com | Miryan Donotirto Kretek Bantul 55772<br>Website : http://www.sdmuhkretek.sch.id.</div>
             </div>
-            <div class="clear"></div>
         </div>
         <div class="slip-title">SLIP GAJI GURU</div>
         <table class="info-table">
@@ -106,11 +139,11 @@ $html = '
             </tr>
             <tr>
                 <td>NIPM</td><td>: '.e($slip_data['nipm']).'</td>
-                <td>Masa Kerja</td><td>: '.(isset($slip_data['tgl_masuk']) ? (date('Y', strtotime($slip_data['periode_gaji'])) - date('Y', strtotime($slip_data['tgl_masuk']))) . ' tahun' : '-').'</td>
+                <td>Masa Kerja</td><td>: '.(isset($slip_data['tgl_masuk']) ? (date('Y', strtotime($slip_data['tgl_input'])) - date('Y', strtotime($slip_data['tgl_masuk']))) . ' tahun' : '-').'</td>
             </tr>
             <tr>
                 <td>Jabatan</td><td>: '.e($slip_data['nama_jabatan']).'</td>
-                <td>id penggajian/Tanggal</td><td>: '.e($slip_data['id_penggajian']).' / '.date('d-m-Y', strtotime($slip_data['periode_gaji'])).'</td>
+                <td>id penggajian/Tanggal</td><td>: '.e($slip_data['id_penggajian']).' / '.formatTanggalIndonesia($slip_data['tgl_input']).'</td>
             </tr>
         </table>
         <table class="section-table">
@@ -166,6 +199,11 @@ $html = '
                 <td></td>
                 <td class="ttd-label">Bendahara Sekolah<br><br>Nama Bendahara</td>
             </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td class="ttd-label">Bantul, '.formatTanggalIndonesia($slip_data['tgl_input']).'</td>
+            </tr>
         </table>
     </div>
 </body>
@@ -180,6 +218,6 @@ $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
 ob_end_clean();
-$filename = 'Slip_Gaji_' . str_replace(' ', '_', $slip_data['nama_guru']) . '_' . date('Y_m', strtotime($slip_data['bulan_penggajian'].'-01')) . '.pdf';
+$filename = 'Slip_Gaji_' . str_replace(' ', '_', $slip_data['nama_guru']) . '_' . date('Y_m', strtotime($slip_data['tgl_input'])) . '.pdf';
 $dompdf->stream($filename, ["Attachment" => false]);
 ?>

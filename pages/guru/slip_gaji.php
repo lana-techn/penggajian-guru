@@ -100,9 +100,24 @@ require_once __DIR__ . '/../../includes/header.php';
                                     'May' => 'Mei', 'June' => 'Juni', 'July' => 'Juli', 'August' => 'Agustus',
                                     'September' => 'September', 'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
                                 ];
-                                $periode_bulan_en = isset($row['bulan_penggajian']) ? date('F', strtotime($row['bulan_penggajian'] . '-01')) : '-';
-                                $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
-                                $periode_tahun = isset($row['bulan_penggajian']) ? date('Y', strtotime($row['bulan_penggajian'] . '-01')) : '-';
+                                // Perbaiki perhitungan periode untuk riwayat
+                                $periode_bulan_en = '-';
+                                $periode_bulan = '-';
+                                $periode_tahun = '-';
+                                
+                                if (isset($row['bulan_penggajian']) && !empty($row['bulan_penggajian'])) {
+                                    // Coba format YYYY-MM
+                                    if (preg_match('/^\d{4}-\d{2}$/', $row['bulan_penggajian'])) {
+                                        $periode_bulan_en = date('F', strtotime($row['bulan_penggajian'] . '-01'));
+                                        $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
+                                        $periode_tahun = date('Y', strtotime($row['bulan_penggajian'] . '-01'));
+                                    } else {
+                                        // Fallback ke tgl_input
+                                        $periode_bulan_en = date('F', strtotime($row['tgl_input']));
+                                        $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
+                                        $periode_tahun = date('Y', strtotime($row['tgl_input']));
+                                    }
+                                }
                                 $is_selected = ($selected_id ? $selected_id : $riwayat_gaji[0]['id']) == $row['id'];
                                 ?>
                                 <tr class="hover:bg-blue-50 transition-colors duration-200 <?= $is_selected ? 'bg-green-100 border-l-4 border-green-500' : '' ?>">
@@ -177,9 +192,24 @@ require_once __DIR__ . '/../../includes/header.php';
                     'November' => 'November',
                     'December' => 'Desember'
                 ];
-                $periode_bulan_en = isset($slip_data['bulan_penggajian']) ? date('F', strtotime($slip_data['bulan_penggajian'] . '-01')) : '-';
-                $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
-                $periode_tahun = isset($slip_data['bulan_penggajian']) ? date('Y', strtotime($slip_data['bulan_penggajian'] . '-01')) : '-';
+                // Perbaiki perhitungan periode
+                $periode_bulan_en = '-';
+                $periode_bulan = '-';
+                $periode_tahun = '-';
+                
+                if (isset($slip_data['bulan_penggajian']) && !empty($slip_data['bulan_penggajian'])) {
+                    // Coba format YYYY-MM
+                    if (preg_match('/^\d{4}-\d{2}$/', $slip_data['bulan_penggajian'])) {
+                        $periode_bulan_en = date('F', strtotime($slip_data['bulan_penggajian'] . '-01'));
+                        $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
+                        $periode_tahun = date('Y', strtotime($slip_data['bulan_penggajian'] . '-01'));
+                    } else {
+                        // Fallback ke tgl_input
+                        $periode_bulan_en = date('F', strtotime($slip_data['tgl_input']));
+                        $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
+                        $periode_tahun = date('Y', strtotime($slip_data['tgl_input']));
+                    }
+                }
                 $tanggal_input = isset($slip_data['tgl_input']) ? date('d M Y', strtotime($slip_data['tgl_input'])) : '-';
                 ?>
                 <p class="text-gray-600">Periode: <?= e($periode_bulan . ' ' . $periode_tahun) ?> (Input: <?= e($tanggal_input) ?>)</p>
