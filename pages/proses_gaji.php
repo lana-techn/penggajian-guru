@@ -76,8 +76,9 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2); // Default 2% jika tidak ada di DB
     $persentase_infak = (float)($potongan_data['infak'] ?? 2); // Default 2% jika tidak ada di DB
 
-    $gaji['potongan_bpjs'] = $gaji['gaji_pokok'] * ($persentase_bpjs / 100);
-    $gaji['infak'] = $gaji['gaji_pokok'] * ($persentase_infak / 100);
+    // Pastikan potongan tidak 0 dengan nilai minimum
+    $gaji['potongan_bpjs'] = max($gaji['gaji_pokok'] * ($persentase_bpjs / 100), 50000); // Minimal 50k
+    $gaji['infak'] = max($gaji['gaji_pokok'] * ($persentase_infak / 100), 25000); // Minimal 25k
 
     $gaji['gaji_kotor'] = $gaji['gaji_pokok'] + $gaji['tunjangan_beras'] + $gaji['tunjangan_kehadiran'] + $gaji['tunjangan_suami_istri'] + $gaji['tunjangan_anak'];
     $gaji['total_potongan'] = $gaji['potongan_bpjs'] + $gaji['infak'];
