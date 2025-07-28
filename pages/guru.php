@@ -267,7 +267,8 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div>
                         <label for="tgl_masuk" class="block text-sm font-medium text-gray-700">Tanggal Masuk</label>
-                        <input type="date" name="tgl_masuk" x-model="formData.tgl_masuk" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" required>
+                        <input type="date" name="tgl_masuk" x-model="formData.tgl_masuk" min="2009-06-01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" required>
+                        <p class="text-xs text-gray-500 mt-1">Minimal tanggal: 1 Juni 2009</p>
                     </div>
                     <div>
                         <label for="id_user" class="block text-sm font-medium text-gray-700">Akun User</label>
@@ -294,7 +295,8 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div>
                         <label for="jml_anak" class="block text-sm font-medium text-gray-700">Jumlah Anak</label>
-                        <input type="number" name="jml_anak" x-model="formData.jml_anak" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                        <input type="number" name="jml_anak" x-model="formData.jml_anak" min="0" max="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                        <p class="text-xs text-gray-500 mt-1">Maksimal 2 anak</p>
                     </div>
                      <div>
                         <label for="no_hp" class="block text-sm font-medium text-gray-700">No. HP</label>
