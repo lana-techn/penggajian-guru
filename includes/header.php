@@ -20,9 +20,33 @@ if (!isset($_SESSION['user_id']) && !in_array($current_script, ['login.php', 'lo
 }
 
 // Ambil detail pengguna dari sesi
-$current_user_level = $_SESSION['level'] ?? 'Tamu';
+$current_user_level = $_SESSION['role'] ?? 'Pengguna';
 $current_user_name = $_SESSION['username'] ?? 'Pengguna';
-$current_user_email = $_SESSION['email'] ?? 'email@example.com';
+
+// Ambil email dari database berdasarkan user_id
+$current_user_email = 'email@example.com'; // default
+if (isset($_SESSION['user_id'])) {
+    $conn = db_connect();
+    $stmt = $conn->prepare("SELECT g.email FROM Guru g WHERE g.id_user = ?");
+    $stmt->bind_param("s", $_SESSION['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($row = $result->fetch_assoc()) {
+        $current_user_email = $row['email'] ?: 'email@example.com';
+    } else {
+        // Jika tidak ada di tabel Guru, coba ambil dari tabel User
+        $stmt_user = $conn->prepare("SELECT username FROM User WHERE id_user = ?");
+        $stmt_user->bind_param("s", $_SESSION['user_id']);
+        $stmt_user->execute();
+        $user_result = $stmt_user->get_result();
+        if ($user_row = $user_result->fetch_assoc()) {
+            $current_user_email = $user_row['username'] . '@sdumuhkretek.sch.id';
+        }
+        $stmt_user->close();
+    }
+    $stmt->close();
+    $conn->close();
+}
 
 // Judul halaman default
 $page_title = $page_title ?? 'Dashboard';
