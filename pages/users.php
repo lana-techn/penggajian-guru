@@ -63,6 +63,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isReadOnlyMode) {
         set_flash_message('error', 'Username dan Hak Akses wajib diisi.');
     } elseif (!$id_user && empty($password)) {
         set_flash_message('error', 'Password wajib diisi untuk pengguna baru.');
+    } elseif ($akses === 'Admin' && !$id_user) {
+        // Cek jumlah admin yang sudah ada
+        $admin_count_stmt = $conn->prepare("SELECT COUNT(*) as total FROM User WHERE akses = 'Admin'");
+        $admin_count_stmt->execute();
+        $admin_count = $admin_count_stmt->get_result()->fetch_assoc()['total'];
+        $admin_count_stmt->close();
+        
+        if ($admin_count >= 2) {
+            set_flash_message('error', 'Jumlah admin sudah mencapai batas maksimal (2 admin).');
+            header('Location: users.php');
+            exit;
+        }
     } else {
         if ($id_user) { // Update
             if (!empty($password)) {
@@ -196,9 +208,9 @@ require_once __DIR__ . '/../includes/header.php';
                     <select name="akses" x-model="formData.akses" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500" required>
                         <option value="">- Pilih Hak Akses -</option>
                         <option value="Admin">Admin</option>
-                        <option value="Kepala Sekolah">Kepala Sekolah</option>
                         <option value="Guru">Guru</option>
                     </select>
+                    <p class="text-xs text-gray-500 mt-1">Admin tidak dapat menambah Kepala Sekolah</p>
                 </div>
                 <div class="md:col-span-2">
                     <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
