@@ -3,15 +3,16 @@ require_once __DIR__ . '/../includes/functions.php';
 requireLogin();
 requireRole('admin');
 
-$conn = db_connect();
 $page_title = 'Laporan Gaji Guru';
+generate_csrf_token();
+require_once __DIR__ . '/../includes/header.php';
+
+// Buat koneksi database setelah header
+$conn = db_connect();
 
 // Ambil data untuk filter
 $karyawan_list = $conn->query("SELECT id_guru, nama_guru FROM Guru ORDER BY nama_guru ASC")->fetch_all(MYSQLI_ASSOC);
 $bulan_list = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
-
-generate_csrf_token();
-require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="bg-white p-6 rounded-xl shadow-lg">
@@ -23,6 +24,9 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="flex gap-2">
             <button onclick="printReport()" class="bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center">
                 <i class="fa-solid fa-print mr-2"></i>Cetak Laporan
+            </button>
+            <button onclick="downloadReportPDF()" class="bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center">
+                <i class="fa-solid fa-file-pdf mr-2"></i>Download PDF
             </button>
         </div>
     </div>
@@ -68,7 +72,6 @@ require_once __DIR__ . '/../includes/header.php';
                         <th class="px-4 py-4 text-left font-semibold">Nama Guru</th>
                         <th class="px-4 py-4 text-center font-semibold">Periode</th>
                         <th class="px-4 py-4 text-center font-semibold">Gaji Bersih</th>
-                        <th class="px-4 py-4 text-center font-semibold">Status</th>
                         <th class="px-4 py-4 text-center font-semibold">Aksi</th>
                     </tr>
                 </thead>
@@ -126,17 +129,6 @@ require_once __DIR__ . '/../includes/header.php';
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 text-center">
-                                    <?php if (($row['status_validasi'] ?? 'Belum Valid') === 'Valid'): ?>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            <i class="fa-solid fa-check-circle mr-1"></i> Valid
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            <i class="fa-solid fa-clock mr-1"></i> Belum Valid
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="px-4 py-4 text-center">
                                     <button onclick="printSlipGaji('<?= e($row['id_penggajian']) ?>')" 
                                             class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
                                             title="Cetak Slip Gaji">
@@ -146,7 +138,7 @@ require_once __DIR__ . '/../includes/header.php';
                             </tr>
                     <?php endwhile;
                     else:
-                        echo '<tr><td colspan="7" class="text-center py-16 text-gray-500">';
+                        echo '<tr><td colspan="6" class="text-center py-16 text-gray-500">';
                         echo '<div class="flex flex-col items-center justify-center">';
                         echo '<i class="fa-solid fa-folder-open fa-4x mb-4 text-gray-300"></i>';
                         echo '<p class="text-lg font-medium text-gray-600">Tidak ada data gaji yang ditemukan</p>';
@@ -154,6 +146,7 @@ require_once __DIR__ . '/../includes/header.php';
                         echo '</div></td></tr>';
                     endif;
                     $stmt->close();
+                    $conn->close();
                     ?>
                 </tbody>
             </table>
@@ -184,6 +177,24 @@ function printReport() {
     
     // Buka halaman cetak laporan di tab baru
     window.open(`../reports/laporan_gaji.php?${params.toString()}`, '_blank');
+}
+
+// Fungsi untuk download laporan PDF
+function downloadReportPDF() {
+    // Dapatkan parameter filter saat ini
+    const params = new URLSearchParams();
+    
+    // Tambahkan filter yang sedang aktif
+    const filterKaryawan = document.getElementById('filter_karyawan')?.value;
+    const filterBulan = document.getElementById('filter_bulan')?.value;
+    const filterTahun = document.getElementById('filter_tahun')?.value;
+    
+    if (filterKaryawan) params.append('karyawan', filterKaryawan);
+    if (filterBulan) params.append('bulan', filterBulan);
+    if (filterTahun) params.append('tahun', filterTahun);
+    
+    // Buka halaman cetak PDF laporan di tab baru
+    window.open(`../reports/cetak_pdf_laporan_gaji.php?${params.toString()}`, '_blank');
 }
 </script>
 
