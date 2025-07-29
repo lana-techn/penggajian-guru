@@ -57,9 +57,9 @@ if ($user_role === 'admin') {
         ],
         [
             'name' => 'Laporan Gaji',
-            'icon' => '<svg class="size-5" ...></svg>',
-            'href' => BASE_URL . '/pages/detail_gaji_guru.php',
-            'active' => $current_page_filename === 'detail_gaji_guru.php',
+            'icon' => '<svg class="size-5" ...</svg>',
+            'href' => BASE_URL . '/pages/laporan_admin.php',
+            'active' => $current_page_filename === 'laporan_admin.php' || $current_page_filename === 'detail_gaji_guru.php',
         ],
     ];
 } elseif ($user_role === 'kepala_sekolah') {
