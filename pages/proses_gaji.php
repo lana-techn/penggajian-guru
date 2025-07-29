@@ -6,6 +6,20 @@ requireRole('admin');
 $conn = db_connect();
 $page_title = 'Proses Gaji Guru';
 
+// Check if required tables exist
+$required_tables = ['Penggajian', 'Guru', 'Jabatan', 'Tunjangan', 'Potongan'];
+$missing_tables = [];
+foreach ($required_tables as $table) {
+    $check = $conn->query("SHOW TABLES LIKE '$table'");
+    if ($check->num_rows == 0) {
+        $missing_tables[] = $table;
+    }
+}
+
+if (!empty($missing_tables)) {
+    set_flash_message('error', 'Tabel yang diperlukan tidak ditemukan: ' . implode(', ', $missing_tables) . '. Silakan jalankan database.sql terlebih dahulu.');
+}
+
 // Ambil data guru untuk dropdown
 $guru_list = $conn->query("SELECT id_guru, nama_guru, tgl_masuk, status_kawin, jml_anak FROM Guru ORDER BY nama_guru ASC")->fetch_all(MYSQLI_ASSOC);
 
@@ -85,6 +99,51 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $gaji['gaji_bersih'] = $gaji['gaji_kotor'] - $gaji['total_potongan'];
 
     return $gaji;
+}
+
+// Function to create sample payroll data for testing
+function createSamplePayrollData($conn) {
+    // Get existing teachers
+    $guru_list = $conn->query("SELECT id_guru FROM Guru LIMIT 3")->fetch_all(MYSQLI_ASSOC);
+    
+    if (empty($guru_list)) {
+        return false;
+    }
+    
+    $current_month = date('m');
+    $current_year = date('Y');
+    
+    foreach ($guru_list as $index => $guru) {
+        $id_penggajian = 'PG' . date('ymdHis') . $guru['id_guru'];
+        $no_slip_gaji = 'SG' . date('ym') . str_pad($index + 1, 4, '0', STR_PAD_LEFT);
+        
+        // Calculate sample payroll data
+        $gaji_pokok = 5000000 + ($index * 500000);
+        $tunjangan_beras = 50000;
+        $tunjangan_kehadiran = 100000;
+        $tunjangan_suami_istri = 300000;
+        $tunjangan_anak = 100000;
+        $potongan_bpjs = $gaji_pokok * 0.02;
+        $infak = $gaji_pokok * 0.02;
+        $gaji_kotor = $gaji_pokok + $tunjangan_beras + $tunjangan_kehadiran + $tunjangan_suami_istri + $tunjangan_anak;
+        $total_potongan = $potongan_bpjs + $infak;
+        $gaji_bersih = $gaji_kotor - $total_potongan;
+        
+        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian, status_validasi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $masa_kerja = 5 + $index;
+        $tgl_input = date('Y-m-d');
+        $status = 'Belum Valid';
+        
+        $stmt->bind_param('sssddddddddddssss', 
+            $id_penggajian, $no_slip_gaji, $guru['id_guru'], $masa_kerja, 
+            $gaji_pokok, $tunjangan_beras, $tunjangan_kehadiran, $tunjangan_suami_istri, 
+            $tunjangan_anak, $potongan_bpjs, $infak, $gaji_kotor, $total_potongan, 
+            $gaji_bersih, $tgl_input, $current_month, $status);
+        
+        $stmt->execute();
+    }
+    
+    return true;
 }
 
 // --- PROSES TAMBAH & UPDATE ---
@@ -176,7 +235,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 $filter_guru = $_GET['guru'] ?? '';
 $filter_bulan = $_GET['bulan'] ?? '';
 $filter_tahun = $_GET['tahun'] ?? '';
-$filter_status = $_GET['status'] ?? '';
+
+// Debug: Check if there are any payroll records
+$debug_count = $conn->query("SELECT COUNT(*) as total FROM Penggajian")->fetch_assoc();
+if ($debug_count['total'] == 0) {
+    set_flash_message('warning', 'Belum ada data penggajian. Silakan tambah data gaji terlebih dahulu.');
+    
+    // Optional: Create sample data for testing
+    if (isset($_GET['create_sample']) && $_GET['create_sample'] === '1') {
+        createSamplePayrollData($conn);
+        set_flash_message('success', 'Data sample berhasil dibuat. Silakan refresh halaman.');
+        header('Location: proses_gaji.php');
+        exit;
+    }
+}
 
 $sql = "SELECT p.*, g.nama_guru, YEAR(p.tgl_input) as payroll_year FROM Penggajian p JOIN Guru g ON p.id_guru = g.id_guru WHERE 1=1";
 $params = [];
@@ -184,12 +256,33 @@ $types = '';
 if ($filter_guru) { $sql .= " AND p.id_guru = ?"; $params[] = $filter_guru; $types .= 's'; }
 if ($filter_bulan) { $sql .= " AND p.bulan_penggajian = ?"; $params[] = $filter_bulan; $types .= 's'; }
 if ($filter_tahun) { $sql .= " AND YEAR(p.tgl_input) = ?"; $params[] = $filter_tahun; $types .= 's'; }
-if ($filter_status) { $sql .= " AND p.status_validasi = ?"; $params[] = $filter_status; $types .= 's'; }
 $sql .= " ORDER BY p.tgl_input DESC, g.nama_guru ASC";
+
 $stmt = $conn->prepare($sql);
-if ($types) $stmt->bind_param($types, ...$params);
-$stmt->execute();
-$result = $stmt->get_result();
+if (!$stmt) {
+    set_flash_message('error', 'Error preparing query: ' . $conn->error);
+    $result = null;
+} else {
+    if ($types) {
+        $stmt->bind_param($types, ...$params);
+    }
+    if (!$stmt->execute()) {
+        set_flash_message('error', 'Error executing query: ' . $stmt->error);
+        $result = null;
+    } else {
+        $result = $stmt->get_result();
+        if (!$result) {
+            set_flash_message('error', 'Error getting result: ' . $stmt->error);
+        } else {
+            // Store the result data in an array to prevent consumption
+            $payroll_data = [];
+            while ($row = $result->fetch_assoc()) {
+                $payroll_data[] = $row;
+            }
+            $result = null; // Clear the original result set
+        }
+    }
+}
 
 generate_csrf_token();
 require_once __DIR__ . '/../includes/header.php';
@@ -323,7 +416,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
         <h3 class="text-xl font-bold text-gray-800 mb-4 font-poppins">Data Gaji Guru</h3>
         <!-- Filter -->
-        <form method="GET" action="" class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border">
+        <form method="GET" action="" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border">
             <div class="md:col-span-1">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Guru</label>
                 <select name="guru" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500">
@@ -346,14 +439,6 @@ require_once __DIR__ . '/../includes/header.php';
                 <label class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
                 <input type="number" name="tahun" value="<?= e($filter_tahun) ?>" placeholder="Cth: <?= $tahun_sekarang ?>" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500">
             </div>
-            <div class="md:col-span-1">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select name="status" class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500">
-                    <option value="">Semua Status</option>
-                    <option value="Valid" <?= ($filter_status == 'Valid') ? 'selected' : '' ?>>Valid</option>
-                    <option value="Belum Valid" <?= ($filter_status == 'Belum Valid') ? 'selected' : '' ?>>Belum Valid</option>
-                </select>
-            </div>
             <div class="flex items-end">
                 <button type="submit" class="w-full bg-green-600 text-white px-4 py-2.5 rounded-lg shadow-md hover:bg-green-700 font-semibold flex items-center justify-center transition-colors duration-200">
                     <i class="fa fa-search mr-2"></i>Filter Data
@@ -374,13 +459,12 @@ require_once __DIR__ . '/../includes/header.php';
                         <th class="px-3 py-4 text-center font-semibold">Gaji Kotor</th>
                         <th class="px-3 py-4 text-center font-semibold">Potongan</th>
                         <th class="px-3 py-4 text-center font-semibold">Gaji Bersih</th>
-                        <th class="px-3 py-4 text-center font-semibold">Status</th>
                         <th class="px-4 py-4 text-center font-semibold">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($result->num_rows > 0): ?>
-                        <?php $no = 1; while ($row = $result->fetch_assoc()): ?>
+                    <?php if ($payroll_data): ?>
+                        <?php $no = 1; foreach ($payroll_data as $row): ?>
                             <tr class="border-b border-gray-200 hover:bg-blue-50 transition-colors duration-200">
                                 <td class="px-3 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
                                 <td class="px-3 py-4 text-center">
@@ -420,23 +504,17 @@ require_once __DIR__ . '/../includes/header.php';
                                         <?= number_format($row['gaji_bersih'], 0, ',', '.') ?>
                                     </span>
                                 </td>
-                                <td class="px-3 py-4 text-center">
-                                    <form method="POST" action="" class="inline-block">
-                                        <?php csrf_input(); ?>
-                                        <input type="hidden" name="update_status" value="1">
-                                        <input type="hidden" name="id_penggajian" value="<?= e($row['id_penggajian']) ?>">
-                                        <select name="status_validasi" onchange="this.form.submit()" class="text-xs px-2 py-1 rounded-lg border focus:outline-none focus:ring-2 focus:ring-green-500 <?= $row['status_validasi'] === 'Valid' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-yellow-100 text-yellow-800 border-yellow-300' ?>">
-                                            <option value="Belum Valid" <?= $row['status_validasi'] === 'Belum Valid' ? 'selected' : '' ?>>Belum Valid</option>
-                                            <option value="Valid" <?= $row['status_validasi'] === 'Valid' ? 'selected' : '' ?>>Valid</option>
-                                        </select>
-                                    </form>
-                                </td>
                                 <td class="px-4 py-4">
                                     <div class="flex items-center justify-center space-x-1">
                                         <button onclick="printSlipGaji('<?= e($row['id_penggajian']) ?>')" 
                                                 class="bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
                                                 title="Cetak Slip Gaji">
                                             <i class="fa-solid fa-print"></i>
+                                        </button>
+                                        <button onclick="downloadSlipGajiPDF('<?= e($row['id_penggajian']) ?>')" 
+                                                class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                                title="Download PDF">
+                                            <i class="fa-solid fa-file-pdf"></i>
                                         </button>
                                         <button @click="editGaji(<?= htmlspecialchars(json_encode($row)) ?>)" 
                                                 class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
@@ -452,14 +530,31 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                 </td>
                             </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
+                    <?php elseif ($payroll_data === null): ?>
+                        <tr>
+                            <td colspan="10" class="text-center py-16 text-gray-500">
+                                <div class="flex flex-col items-center justify-center">
+                                    <i class="fa-solid fa-exclamation-triangle fa-4x mb-4 text-red-300"></i>
+                                    <p class="text-lg font-medium text-red-600">Error dalam mengambil data</p>
+                                    <p class="text-sm text-gray-400 mt-1">Terjadi kesalahan pada database. Silakan coba lagi atau hubungi administrator.</p>
+                                </div>
+                            </td>
+                        </tr>
                     <?php else: ?>
                         <tr>
-                            <td colspan="11" class="text-center py-16 text-gray-500">
+                            <td colspan="10" class="text-center py-16 text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fa-solid fa-folder-open fa-4x mb-4 text-gray-300"></i>
                                     <p class="text-lg font-medium text-gray-600">Tidak ada data gaji yang ditemukan</p>
                                     <p class="text-sm text-gray-400 mt-1">Silakan tambah data gaji baru atau sesuaikan filter pencarian</p>
+                                    <?php if ($debug_count['total'] == 0): ?>
+                                        <div class="mt-4">
+                                            <a href="?create_sample=1" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+                                                <i class="fa-solid fa-plus mr-2"></i>Buat Data Sample
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -475,6 +570,12 @@ require_once __DIR__ . '/../includes/header.php';
 function printSlipGaji(idPenggajian) {
     // Buka halaman cetak slip gaji di tab baru
     window.open(`../reports/slip_gaji.php?id=${idPenggajian}`, '_blank');
+}
+
+// Fungsi untuk download slip gaji PDF
+function downloadSlipGajiPDF(idPenggajian) {
+    // Buka halaman cetak PDF slip gaji
+    window.open(`../reports/cetak_pdf_slip_gaji.php?id=${idPenggajian}`, '_blank');
 }
 
 function gajiPage() {
