@@ -33,6 +33,7 @@ $bulan_opsi = [
 ];
 
 // --- FUNGSI PERHITUNGAN GAJI DI SISI SERVER ---
+// Fungsi ini menggunakan helper functions untuk memastikan konsistensi perhitungan
 function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $guru_stmt = $conn->prepare("SELECT g.id_jabatan, g.tgl_masuk, g.status_kawin, g.jml_anak, j.gaji_awal as gaji_pokok FROM Guru g JOIN Jabatan j ON g.id_jabatan = j.id_jabatan WHERE g.id_guru = ?");
     $guru_stmt->bind_param('s', $id_guru);
@@ -80,19 +81,19 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $gaji['tunjangan_suami_istri'] = $tunjangan_suami_istri;
     
     // Tunjangan Anak (maks 2 anak)
-    $jml_anak_tunjangan = min((int)($guru_data['jml_anak'] ?? 0), 2);
-    $gaji['tunjangan_anak'] = $jml_anak_tunjangan * 100000; // 100k per anak
+    $gaji['tunjangan_anak'] = calculate_tunjangan_anak($guru_data['jml_anak'] ?? 0);
     
     // Tunjangan Kehadiran
-    $gaji['tunjangan_kehadiran'] = ($jml_terlambat > 5) ? 0 : (100000 - ($jml_terlambat * 5000));
+    $gaji['tunjangan_kehadiran'] = calculate_tunjangan_kehadiran($jml_terlambat);
     
     // Potongan - gunakan persentase dari database atau nilai default
     $persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2); // Default 2% jika tidak ada di DB
     $persentase_infak = (float)($potongan_data['infak'] ?? 2); // Default 2% jika tidak ada di DB
 
-    // Pastikan potongan tidak 0 dengan nilai minimum
-    $gaji['potongan_bpjs'] = max($gaji['gaji_pokok'] * ($persentase_bpjs / 100), 50000); // Minimal 50k
-    $gaji['infak'] = max($gaji['gaji_pokok'] * ($persentase_infak / 100), 25000); // Minimal 25k
+    // Hitung potongan menggunakan fungsi helper
+    $potongan = calculate_potongan($gaji['gaji_pokok'], $persentase_bpjs, $persentase_infak);
+    $gaji['potongan_bpjs'] = $potongan['potongan_bpjs'];
+    $gaji['infak'] = $potongan['infak'];
 
     $gaji['gaji_kotor'] = $gaji['gaji_pokok'] + $gaji['tunjangan_beras'] + $gaji['tunjangan_kehadiran'] + $gaji['tunjangan_suami_istri'] + $gaji['tunjangan_anak'];
     $gaji['total_potongan'] = $gaji['potongan_bpjs'] + $gaji['infak'];
@@ -120,11 +121,12 @@ function createSamplePayrollData($conn) {
         // Calculate sample payroll data
         $gaji_pokok = 5000000 + ($index * 500000);
         $tunjangan_beras = 50000;
-        $tunjangan_kehadiran = 100000;
+        $tunjangan_kehadiran = calculate_tunjangan_kehadiran(0); // Tidak ada keterlambatan
         $tunjangan_suami_istri = 300000;
-        $tunjangan_anak = 100000;
-        $potongan_bpjs = $gaji_pokok * 0.02;
-        $infak = $gaji_pokok * 0.02;
+        $tunjangan_anak = calculate_tunjangan_anak(1); // 1 anak
+        $potongan = calculate_potongan($gaji_pokok, 2, 2); // 2% BPJS dan 2% Infak
+        $potongan_bpjs = $potongan['potongan_bpjs'];
+        $infak = $potongan['infak'];
         $gaji_kotor = $gaji_pokok + $tunjangan_beras + $tunjangan_kehadiran + $tunjangan_suami_istri + $tunjangan_anak;
         $total_potongan = $potongan_bpjs + $infak;
         $gaji_bersih = $gaji_kotor - $total_potongan;
@@ -415,6 +417,55 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- Tabel Data Gaji -->
     <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
         <h3 class="text-xl font-bold text-gray-800 mb-4 font-poppins">Data Gaji Guru</h3>
+        
+        <!-- Ringkasan Data -->
+        <?php if ($payroll_data && count($payroll_data) > 0): ?>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="flex items-center">
+                    <i class="fas fa-users text-blue-600 text-xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-blue-600 font-medium">Total Data</p>
+                        <p class="text-2xl font-bold text-blue-800"><?= count($payroll_data) ?></p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                <div class="flex items-center">
+                    <i class="fas fa-money-bill-wave text-green-600 text-xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-green-600 font-medium">Total Gaji Bersih</p>
+                        <p class="text-2xl font-bold text-green-800">
+                            Rp <?= number_format(array_sum(array_column($payroll_data, 'gaji_bersih')), 0, ',', '.') ?>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div class="flex items-center">
+                    <i class="fas fa-chart-line text-orange-600 text-xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-orange-600 font-medium">Rata-rata Gaji</p>
+                        <p class="text-2xl font-bold text-orange-800">
+                            Rp <?= number_format(array_sum(array_column($payroll_data, 'gaji_bersih')) / count($payroll_data), 0, ',', '.') ?>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <div class="flex items-center">
+                    <i class="fas fa-percentage text-purple-600 text-xl mr-3"></i>
+                    <div>
+                        <p class="text-sm text-purple-600 font-medium">Total Potongan</p>
+                        <p class="text-2xl font-bold text-purple-800">
+                            Rp <?= number_format(array_sum(array_column($payroll_data, 'total_potongan')), 0, ',', '.') ?>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
         <!-- Filter -->
         <form method="GET" action="" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end bg-gray-50 p-4 rounded-lg border">
             <div class="md:col-span-1">
@@ -446,84 +497,114 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         </form>
 
-        <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-200">
-            <table class="min-w-full text-sm text-left text-gray-600 divide-y divide-gray-200">
+        <div class="overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-200" style="max-width: 100%;">
+            <table class="min-w-full text-sm text-left text-gray-600 divide-y divide-gray-200" style="min-width: 1200px;">
                 <thead class="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 uppercase font-poppins text-xs">
                     <tr>
-                        <th class="px-3 py-4 text-center font-semibold">No</th>
-                        <th class="px-3 py-4 text-center font-semibold">No Slip Gaji</th>
-                        <th class="px-4 py-4 text-left font-semibold">Nama Guru</th>
-                        <th class="px-3 py-4 text-center font-semibold">Periode</th>
-                        <th class="px-3 py-4 text-center font-semibold">Tunj. Beras</th>
-                        <th class="px-3 py-4 text-center font-semibold">Tunj. Hadir</th>
-                        <th class="px-3 py-4 text-center font-semibold">Gaji Kotor</th>
-                        <th class="px-3 py-4 text-center font-semibold">Potongan</th>
-                        <th class="px-3 py-4 text-center font-semibold">Gaji Bersih</th>
-                        <th class="px-4 py-4 text-center font-semibold">Aksi</th>
+                        <th class="px-2 py-4 text-center font-semibold">No</th>
+                        <th class="px-2 py-4 text-center font-semibold">No Slip</th>
+                        <th class="px-3 py-4 text-left font-semibold">Nama Guru</th>
+                        <th class="px-2 py-4 text-center font-semibold">Periode</th>
+                        <th class="px-2 py-4 text-center font-semibold">Gaji Pokok</th>
+                        <th class="px-2 py-4 text-center font-semibold">Tunj. Beras</th>
+                        <th class="px-2 py-4 text-center font-semibold">Tunj. Hadir</th>
+                        <th class="px-2 py-4 text-center font-semibold">Tunj. Suami/Istri</th>
+                        <th class="px-2 py-4 text-center font-semibold">Tunj. Anak</th>
+                        <th class="px-2 py-4 text-center font-semibold">Gaji Kotor</th>
+                        <th class="px-2 py-4 text-center font-semibold">BPJS</th>
+                        <th class="px-2 py-4 text-center font-semibold">Infak</th>
+                        <th class="px-2 py-4 text-center font-semibold">Total Potongan</th>
+                        <th class="px-2 py-4 text-center font-semibold">Gaji Bersih</th>
+                        <th class="px-3 py-4 text-center font-semibold">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($payroll_data): ?>
                         <?php $no = 1; foreach ($payroll_data as $row): ?>
                             <tr class="border-b border-gray-200 hover:bg-blue-50 transition-colors duration-200">
-                                <td class="px-3 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
-                                <td class="px-3 py-4 text-center">
-                                    <span class="font-mono text-sm bg-gray-100 px-2 py-1 rounded text-gray-700">
+                                <td class="px-2 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
+                                <td class="px-2 py-4 text-center">
+                                    <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">
                                         <?= e($row['no_slip_gaji'] ?? 'SG' . date('ym') . str_pad($no-1, 4, '0', STR_PAD_LEFT)) ?>
                                     </span>
                                 </td>
-                                <td class="px-4 py-4">
-                                    <div class="font-semibold text-gray-800"><?= e($row['nama_guru']) ?></div>
+                                <td class="px-3 py-4">
+                                    <div class="font-semibold text-gray-800 text-sm"><?= e($row['nama_guru']) ?></div>
                                 </td>
-                                <td class="px-3 py-4 text-center text-gray-600">
-                                    <span class="text-sm"><?= e($bulan_opsi[$row['bulan_penggajian']] ?? '') ?></span>
+                                <td class="px-2 py-4 text-center text-gray-600">
+                                    <span class="text-xs"><?= e($bulan_opsi[$row['bulan_penggajian']] ?? '') ?></span>
                                     <div class="text-xs text-gray-500"><?= e($row['payroll_year']) ?></div>
                                 </td>
-                                <td class="px-3 py-4 text-center">
-                                    <span class="text-sm font-medium text-orange-600">
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-blue-600">
+                                        <?= number_format($row['gaji_pokok'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-orange-600">
                                         <?= number_format($row['tunjangan_beras'], 0, ',', '.') ?>
                                     </span>
                                 </td>
-                                <td class="px-3 py-4 text-center">
-                                    <span class="text-sm font-medium text-purple-600">
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-purple-600">
                                         <?= number_format($row['tunjangan_kehadiran'], 0, ',', '.') ?>
                                     </span>
                                 </td>
-                                <td class="px-3 py-4 text-center">
-                                    <span class="text-sm font-semibold text-blue-600">
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-indigo-600">
+                                        <?= number_format($row['tunjangan_suami_istri'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-teal-600">
+                                        <?= number_format($row['tunjangan_anak'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-semibold text-blue-600">
                                         <?= number_format($row['gaji_kotor'], 0, ',', '.') ?>
                                     </span>
                                 </td>
-                                <td class="px-3 py-4 text-center">
-                                    <span class="text-sm font-medium text-red-600">
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-red-600">
+                                        <?= number_format($row['potongan_bpjs'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-red-600">
+                                        <?= number_format($row['infak'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-red-600">
                                         <?= number_format($row['total_potongan'], 0, ',', '.') ?>
                                     </span>
                                 </td>
-                                <td class="px-3 py-4 text-center">
-                                    <span class="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
                                         <?= number_format($row['gaji_bersih'], 0, ',', '.') ?>
                                     </span>
                                 </td>
-                                <td class="px-4 py-4">
+                                <td class="px-3 py-4">
                                     <div class="flex items-center justify-center space-x-1">
                                         <button onclick="printSlipGaji('<?= e($row['id_penggajian']) ?>')" 
-                                                class="bg-green-500 hover:bg-green-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                                class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
                                                 title="Cetak Slip Gaji">
                                             <i class="fa-solid fa-print"></i>
                                         </button>
                                         <button onclick="downloadSlipGajiPDF('<?= e($row['id_penggajian']) ?>')" 
-                                                class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                                class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
                                                 title="Download PDF">
                                             <i class="fa-solid fa-file-pdf"></i>
                                         </button>
                                         <button @click="editGaji(<?= htmlspecialchars(json_encode($row)) ?>)" 
-                                                class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
                                                 title="Edit Data">
                                             <i class="fa-solid fa-pencil"></i>
                                         </button>
                                         <a href="?action=delete&id=<?= e($row['id_penggajian']) ?>&token=<?= $_SESSION['csrf_token'] ?>" 
                                            onclick="return confirm('Yakin ingin menghapus data ini?')" 
-                                           class="bg-red-500 hover:bg-red-600 text-white px-2 py-1.5 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
+                                           class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200 shadow-sm hover:shadow-md" 
                                            title="Hapus Data">
                                             <i class="fa-solid fa-trash"></i>
                                         </a>
@@ -533,7 +614,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <?php endforeach; ?>
                     <?php elseif ($payroll_data === null): ?>
                         <tr>
-                            <td colspan="10" class="text-center py-16 text-gray-500">
+                            <td colspan="15" class="text-center py-16 text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fa-solid fa-exclamation-triangle fa-4x mb-4 text-red-300"></i>
                                     <p class="text-lg font-medium text-red-600">Error dalam mengambil data</p>
@@ -543,7 +624,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </tr>
                     <?php else: ?>
                         <tr>
-                            <td colspan="10" class="text-center py-16 text-gray-500">
+                            <td colspan="15" class="text-center py-16 text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fa-solid fa-folder-open fa-4x mb-4 text-gray-300"></i>
                                     <p class="text-lg font-medium text-gray-600">Tidak ada data gaji yang ditemukan</p>
