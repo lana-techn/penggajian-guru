@@ -91,6 +91,13 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <i class="fa-solid fa-chevron-right ml-auto text-purple-500"></i>
                     </a>
                 </li>
+                <li>
+                    <a href="pages/kepala_sekolah/ubah_password.php" class="flex items-center p-4 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors group">
+                        <i class="fa-solid fa-key text-2xl text-orange-600"></i>
+                        <span class="ml-4 font-semibold text-orange-800 group-hover:text-orange-900">Ubah Password</span>
+                        <i class="fa-solid fa-chevron-right ml-auto text-orange-500"></i>
+                    </a>
+                </li>
             </ul>
         </div>
     </div>
