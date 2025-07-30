@@ -61,7 +61,18 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <p class="text-gray-500 text-sm font-medium">Gaji Terakhir Diterima</p>
                     <?php if ($gaji_terakhir): ?>
                         <p class="text-3xl font-bold text-gray-800 mt-1">Rp <?= number_format($gaji_terakhir['gaji_bersih'], 2, ',', '.') ?></p>
-                        <p class="text-xs text-gray-500 mt-1">Periode: <?= e(date('F Y', strtotime($gaji_terakhir['bulan_penggajian']))) ?></p>
+                        <?php
+                        // Mapping bulan Inggris ke Indonesia
+                        $bulan_map = [
+                            '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
+                            '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
+                            '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+                        ];
+                        $bulan_penggajian = $gaji_terakhir['bulan_penggajian'];
+                        $tahun_penggajian = date('Y', strtotime($gaji_terakhir['tgl_input']));
+                        $nama_bulan = $bulan_map[$bulan_penggajian] ?? $bulan_penggajian;
+                        ?>
+                        <p class="text-xs text-gray-500 mt-1">Periode: <?= e($nama_bulan . ' ' . $tahun_penggajian) ?></p>
                     <?php else: ?>
                         <p class="text-lg font-semibold text-gray-700 mt-2">Belum ada data gaji yang dibayarkan.</p>
                     <?php endif; ?>
