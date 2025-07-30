@@ -10,6 +10,9 @@ $conn = db_connect();
 // Ambil data untuk filter
 $jabatan_list = $conn->query("SELECT id_jabatan, nama_jabatan FROM Jabatan ORDER BY nama_jabatan ASC")->fetch_all(MYSQLI_ASSOC);
 
+// Array untuk nama bulan
+$bulan_list = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
+
 // Ambil filter dari GET request
 $filter_bulan = $_GET['bulan'] ?? '';
 $filter_tahun = $_GET['tahun'] ?? date('Y'); // Default tahun ini
@@ -22,9 +25,16 @@ $sql = "
         g.nama_guru as Nama_Karyawan, 
         j.nama_jabatan as Nama_Jabatan, 
         p.tgl_input as Tgl_Gaji, 
-        (p.tunjangan_beras + p.tunjangan_kehadiran + p.tunjangan_suami_istri + p.tunjangan_anak) as Total_Tunjangan,
-        0 as Total_Lembur,
+        p.bulan_penggajian as Bulan_Penggajian,
         p.gaji_pokok as Gaji_Pokok,
+        p.tunjangan_beras as Tunjangan_Beras,
+        p.tunjangan_kehadiran as Tunjangan_Kehadiran,
+        p.tunjangan_suami_istri as Tunjangan_Suami_Istri,
+        p.tunjangan_anak as Tunjangan_Anak,
+        (p.tunjangan_beras + p.tunjangan_kehadiran + p.tunjangan_suami_istri + p.tunjangan_anak) as Total_Tunjangan,
+        p.gaji_kotor as Gaji_Kotor,
+        p.potongan_bpjs as Potongan_BPJS,
+        p.infak as Infak,
         p.total_potongan as Total_Potongan, 
         p.gaji_bersih as Gaji_Bersih
     FROM Penggajian p
@@ -147,9 +157,14 @@ require_once __DIR__ . '/../../includes/header.php';
                         <th class="px-4 py-3">Nama Karyawan</th>
                         <th class="px-4 py-3">Jabatan</th>
                         <th class="px-4 py-3 text-right">Gaji Pokok</th>
-                        <th class="px-4 py-3 text-right">Tunjangan</th>
-                        <th class="px-4 py-3 text-right">Lembur</th>
-                        <th class="px-4 py-3 text-right">Potongan</th>
+                        <th class="px-4 py-3 text-right">Tunj. Beras</th>
+                        <th class="px-4 py-3 text-right">Tunj. Hadir</th>
+                        <th class="px-4 py-3 text-right">Tunj. Suami/Istri</th>
+                        <th class="px-4 py-3 text-right">Tunj. Anak</th>
+                        <th class="px-4 py-3 text-right">Gaji Kotor</th>
+                        <th class="px-4 py-3 text-right">BPJS</th>
+                        <th class="px-4 py-3 text-right">Infak</th>
+                        <th class="px-4 py-3 text-right">Total Potongan</th>
                         <th class="px-4 py-3 text-right">Gaji Bersih</th>
                     </tr>
                 </thead>
@@ -157,28 +172,43 @@ require_once __DIR__ . '/../../includes/header.php';
                     <?php
                     $no = 1;
                     $total_gaji_pokok = 0;
-                    $total_semua_tunjangan = 0;
-                    $total_semua_lembur = 0;
+                    $total_tunjangan_beras = 0;
+                    $total_tunjangan_kehadiran = 0;
+                    $total_tunjangan_suami_istri = 0;
+                    $total_tunjangan_anak = 0;
+                    $total_gaji_kotor = 0;
+                    $total_potongan_bpjs = 0;
+                    $total_infak = 0;
                     $total_semua_potongan = 0;
                     $total_gaji_bersih = 0;
 
                     if (!empty($laporan_data)):
                         foreach ($laporan_data as $row):
                             $total_gaji_pokok += $row['Gaji_Pokok'];
-                            $total_semua_tunjangan += $row['Total_Tunjangan'];
-                            $total_semua_lembur += $row['Total_Lembur'];
+                            $total_tunjangan_beras += $row['Tunjangan_Beras'];
+                            $total_tunjangan_kehadiran += $row['Tunjangan_Kehadiran'];
+                            $total_tunjangan_suami_istri += $row['Tunjangan_Suami_Istri'];
+                            $total_tunjangan_anak += $row['Tunjangan_Anak'];
+                            $total_gaji_kotor += $row['Gaji_Kotor'];
+                            $total_potongan_bpjs += $row['Potongan_BPJS'];
+                            $total_infak += $row['Infak'];
                             $total_semua_potongan += $row['Total_Potongan'];
                             $total_gaji_bersih += $row['Gaji_Bersih'];
                     ?>
                             <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-2 text-center"><?= $no++ ?></td>
                                 <td class="px-4 py-2 font-mono text-xs"><?= e($row['Id_Gaji']) ?></td>
-                                <td class="px-4 py-2"><?= e(date('d M Y', strtotime($row['Tgl_Gaji']))) ?></td>
+                                <td class="px-4 py-2"><?= $bulan_list[intval($row['Bulan_Penggajian'])] ?? $row['Bulan_Penggajian'] ?> <?= date('Y', strtotime($row['Tgl_Gaji'])) ?></td>
                                 <td class="px-4 py-2 font-medium text-gray-900"><?= e($row['Nama_Karyawan']) ?></td>
                                 <td class="px-4 py-2"><?= e($row['Nama_Jabatan']) ?></td>
                                 <td class="px-4 py-2 text-right">Rp <?= number_format($row['Gaji_Pokok'], 0, ',', '.') ?></td>
-                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Total_Tunjangan'], 0, ',', '.') ?></td>
-                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Total_Lembur'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Tunjangan_Beras'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Tunjangan_Kehadiran'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Tunjangan_Suami_Istri'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Tunjangan_Anak'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right">Rp <?= number_format($row['Gaji_Kotor'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right text-red-600">- Rp <?= number_format($row['Potongan_BPJS'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-2 text-right text-red-600">- Rp <?= number_format($row['Infak'], 0, ',', '.') ?></td>
                                 <td class="px-4 py-2 text-right text-red-600">- Rp <?= number_format($row['Total_Potongan'], 0, ',', '.') ?></td>
                                 <td class="px-4 py-2 text-right font-bold text-green-700">Rp <?= number_format($row['Gaji_Bersih'], 0, ',', '.') ?></td>
                             </tr>
@@ -187,7 +217,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     else:
                         ?>
                         <tr>
-                            <td colspan="10" class="text-center py-10 text-gray-500">
+                            <td colspan="15" class="text-center py-10 text-gray-500">
                                 <i class="fa-solid fa-folder-open text-3xl text-gray-400 mb-2"></i>
                                 <p>Tidak ada data laporan yang cocok dengan kriteria filter Anda.</p>
                             </td>
@@ -201,8 +231,13 @@ require_once __DIR__ . '/../../includes/header.php';
                         <tr>
                             <td colspan="5" class="px-4 py-3 text-right">Total Keseluruhan:</td>
                             <td class="px-4 py-3 text-right">Rp <?= number_format($total_gaji_pokok, 0, ',', '.') ?></td>
-                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_semua_tunjangan, 0, ',', '.') ?></td>
-                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_semua_lembur, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_tunjangan_beras, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_tunjangan_kehadiran, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_tunjangan_suami_istri, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_tunjangan_anak, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right">Rp <?= number_format($total_gaji_kotor, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right text-red-600">- Rp <?= number_format($total_potongan_bpjs, 0, ',', '.') ?></td>
+                            <td class="px-4 py-3 text-right text-red-600">- Rp <?= number_format($total_infak, 0, ',', '.') ?></td>
                             <td class="px-4 py-3 text-right text-red-600">- Rp <?= number_format($total_semua_potongan, 0, ',', '.') ?></td>
                             <td class="px-4 py-3 text-right text-green-700">Rp <?= number_format($total_gaji_bersih, 0, ',', '.') ?></td>
                         </tr>
