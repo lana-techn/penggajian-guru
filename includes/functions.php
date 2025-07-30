@@ -406,3 +406,50 @@ function render_page_number($page_num, $current_page, $base_url)
         return '<li><a href="' . $base_url . '&page=' . $page_num . '" class="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700">' . $page_num . '</a></li>';
     }
 }
+
+/**
+ * ----------------------------------------------------------------
+ * FUNGSI PERHITUNGAN GAJI
+ * ----------------------------------------------------------------
+ */
+
+/**
+ * Menghitung potongan berdasarkan persentase dari gaji pokok.
+ * @param float $gaji_pokok Gaji pokok
+ * @param float $persentase_bpjs Persentase BPJS (default: 2)
+ * @param float $persentase_infak Persentase Infak (default: 2)
+ * @return array Array berisi potongan_bpjs dan infak
+ */
+function calculate_potongan($gaji_pokok, $persentase_bpjs = 2, $persentase_infak = 2)
+{
+    return [
+        'potongan_bpjs' => $gaji_pokok * ($persentase_bpjs / 100),
+        'infak' => $gaji_pokok * ($persentase_infak / 100)
+    ];
+}
+
+/**
+ * Menghitung tunjangan kehadiran berdasarkan jumlah keterlambatan.
+ * @param int $jml_terlambat Jumlah keterlambatan
+ * @return float Tunjangan kehadiran
+ */
+function calculate_tunjangan_kehadiran($jml_terlambat)
+{
+    if ($jml_terlambat > 5) {
+        return 0;
+    }
+    return 100000 - ($jml_terlambat * 5000);
+}
+
+/**
+ * Menghitung tunjangan anak berdasarkan jumlah anak.
+ * @param int $jml_anak Jumlah anak
+ * @param int $max_anak Maksimal anak yang mendapat tunjangan (default: 2)
+ * @param float $tunjangan_per_anak Tunjangan per anak (default: 100000)
+ * @return float Tunjangan anak
+ */
+function calculate_tunjangan_anak($jml_anak, $max_anak = 2, $tunjangan_per_anak = 100000)
+{
+    $jml_anak_tunjangan = min((int)$jml_anak, $max_anak);
+    return $jml_anak_tunjangan * $tunjangan_per_anak;
+}
