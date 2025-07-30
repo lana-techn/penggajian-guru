@@ -112,6 +112,12 @@ if ($user_role === 'admin') {
             'href' => BASE_URL . '/pages/kepala_sekolah/laporan.php',
             'active' => $current_page_filename === 'laporan.php',
         ],
+        [
+            'name' => 'Ubah Password',
+            'icon' => '<svg class="size-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 7H18C19.1046 7 20 7.89543 20 9V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V9C4 7.89543 4.89543 7 6 7H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12C13.1046 12 14 11.1046 14 10C14 8.89543 13.1046 8 12 8C10.8954 8 10 8.89543 10 10C10 11.1046 10.8954 12 12 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 16C16 14.3431 14.2091 13 12 13C9.79086 13 8 14.3431 8 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+            'href' => BASE_URL . '/pages/kepala_sekolah/ubah_password.php',
+            'active' => $current_page_filename === 'ubah_password.php',
+        ],
     ];
 } elseif ($user_role === 'guru') {
     $navigation = [
