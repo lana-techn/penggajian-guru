@@ -56,6 +56,7 @@ $kehadiran_data = $kehadiran_stmt->get_result()->fetch_assoc();
 $jml_terlambat = $kehadiran_data['jml_terlambat'] ?? 0;
 
 // --- MULAI PERHITUNGAN ---
+// Menggunakan helper functions untuk memastikan konsistensi dengan proses_gaji.php
 
 $response = [];
 
@@ -83,18 +84,19 @@ if (in_array($guru_data['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
 $response['tunjangan_suami_istri'] = $tunjangan_suami_istri;
 
 // d) Tunjangan Anak (Nilai Tetap per anak, maks 2 anak)
-$jml_anak_tunjangan = min((int)($guru_data['jml_anak'] ?? 0), 2);
-$response['tunjangan_anak'] = $jml_anak_tunjangan * 100000;
+$response['tunjangan_anak'] = calculate_tunjangan_anak($guru_data['jml_anak'] ?? 0);
 
 // b) Tunjangan Kehadiran (Dihitung Otomatis)
-$response['tunjangan_kehadiran'] = ($jml_terlambat > 5) ? 0 : (100000 - ($jml_terlambat * 5000));
+$response['tunjangan_kehadiran'] = calculate_tunjangan_kehadiran($jml_terlambat);
 
 // Potongan (Ambil dari database dengan fallback ke default)
-$persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2);
-$persentase_infak = (float)($potongan_data['infak'] ?? 2);
+$persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2); // Default 2% jika tidak ada di DB
+$persentase_infak = (float)($potongan_data['infak'] ?? 2); // Default 2% jika tidak ada di DB
 
-$response['potongan_bpjs'] = $gaji_pokok * ($persentase_bpjs / 100);
-$response['infak'] = $gaji_pokok * ($persentase_infak / 100);
+// Hitung potongan menggunakan fungsi helper
+$potongan = calculate_potongan($gaji_pokok, $persentase_bpjs, $persentase_infak);
+$response['potongan_bpjs'] = $potongan['potongan_bpjs'];
+$response['infak'] = $potongan['infak'];
 
 // Kirim response
 echo json_encode($response);
