@@ -131,16 +131,15 @@ function createSamplePayrollData($conn) {
         $total_potongan = $potongan_bpjs + $infak;
         $gaji_bersih = $gaji_kotor - $total_potongan;
         
-        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian, status_validasi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $masa_kerja = 5 + $index;
         $tgl_input = date('Y-m-d');
-        $status = 'Belum Valid';
         
-        $stmt->bind_param('sssddddddddddssss', 
+        $stmt->bind_param('sssddddddddddsss', 
             $id_penggajian, $no_slip_gaji, $guru['id_guru'], $masa_kerja, 
             $gaji_pokok, $tunjangan_beras, $tunjangan_kehadiran, $tunjangan_suami_istri, 
             $tunjangan_anak, $potongan_bpjs, $infak, $gaji_kotor, $total_potongan, 
-            $gaji_bersih, $tgl_input, $current_month, $status);
+            $gaji_bersih, $tgl_input, $current_month);
         
         $stmt->execute();
     }
@@ -180,9 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_guru'])) {
         } else {
             $id_penggajian_baru = 'PG' . date('ymdHis') . $id_guru;
             $no_slip_gaji = 'SG' . date('ym') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-            $status_validasi = 'Belum Valid';
-            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian, status_validasi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('sssddddddddddssss', $id_penggajian_baru, $no_slip_gaji, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['tunjangan_beras'], $calculated_gaji['tunjangan_kehadiran'], $calculated_gaji['tunjangan_suami_istri'], $calculated_gaji['tunjangan_anak'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan, $status_validasi);
+            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('sssddddddddddsss', $id_penggajian_baru, $no_slip_gaji, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['tunjangan_beras'], $calculated_gaji['tunjangan_kehadiran'], $calculated_gaji['tunjangan_suami_istri'], $calculated_gaji['tunjangan_anak'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan);
             if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil ditambahkan.');
             else set_flash_message('error', 'Gagal menambah data gaji: ' . $stmt->error);
         }
@@ -191,35 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_guru'])) {
     exit;
 }
 
-// --- PROSES UPDATE STATUS ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-    if (!validate_csrf_token()) die('Validasi CSRF gagal.');
-    
-    $id_penggajian = $_POST['id_penggajian'];
-    $new_status = $_POST['status_validasi'];
-    
-    // Cek apakah id_penggajian ada di database
-    $cek_stmt = $conn->prepare("SELECT id_penggajian FROM Penggajian WHERE id_penggajian = ?");
-    $cek_stmt->bind_param('s', $id_penggajian);
-    $cek_stmt->execute();
-    $cek_result = $cek_stmt->get_result();
-    
-    if ($cek_result->num_rows === 0) {
-        set_flash_message('error', 'ID Gaji tidak ditemukan.');
-    } else {
-        $stmt = $conn->prepare("UPDATE Penggajian SET status_validasi = ? WHERE id_penggajian = ?");
-        $stmt->bind_param('ss', $new_status, $id_penggajian);
-        
-        if ($stmt->execute()) {
-            set_flash_message('success', 'Status gaji berhasil diupdate.');
-        } else {
-            set_flash_message('error', 'Gagal mengupdate status gaji.');
-        }
-    }
-    
-    header('Location: proses_gaji.php');
-    exit;
-}
+
 
 // --- PROSES HAPUS ---
 if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id']) && isset($_GET['token']) && hash_equals($_SESSION['csrf_token'], $_GET['token'])) {
