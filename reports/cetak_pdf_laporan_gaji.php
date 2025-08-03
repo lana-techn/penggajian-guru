@@ -247,10 +247,9 @@ $html = '<!DOCTYPE html>
                 <th style="width: 20%;">Nama Guru</th>
                 <th style="width: 15%;">Jabatan</th>
                 <th style="width: 8%;">Periode</th>
-                <th style="width: 10%;">Gaji Kotor</th>
-                <th style="width: 10%;">Potongan</th>
-                <th style="width: 10%;">Gaji Bersih</th>
-                <th style="width: 10%;">Status</th>
+                <th style="width: 12%;">Gaji Kotor</th>
+                <th style="width: 12%;">Potongan</th>
+                <th style="width: 12%;">Gaji Bersih</th>
             </tr>
         </thead>
         <tbody>';
@@ -267,7 +266,6 @@ if (count($data_rows) > 0) {
                       <td class="text-right">Rp ' . number_format($row['gaji_kotor'], 0, ',', '.') . '</td>
                       <td class="text-right">Rp ' . number_format($row['total_potongan'], 0, ',', '.') . '</td>
                       <td class="text-right font-bold">Rp ' . number_format($row['gaji_bersih'], 0, ',', '.') . '</td>
-                      <td class="text-center">' . (($row['status_validasi'] ?? 'Belum Valid') === 'Valid' ? '✓ Valid' : '⏳ Pending') . '</td>
                   </tr>';
     }
     $html .= '<tr class="total-row">
@@ -275,10 +273,9 @@ if (count($data_rows) > 0) {
                   <td class="text-right">Rp ' . number_format($total_gaji_kotor, 0, ',', '.') . '</td>
                   <td class="text-right">Rp ' . number_format($total_potongan, 0, ',', '.') . '</td>
                   <td class="text-right">Rp ' . number_format($total_gaji_bersih, 0, ',', '.') . '</td>
-                  <td class="text-center">-</td>
               </tr>';
 } else {
-    $html .= '<tr><td colspan="9" class="no-data">Tidak ada data yang ditemukan</td></tr>';
+    $html .= '<tr><td colspan="8" class="no-data">Tidak ada data yang ditemukan</td></tr>';
 }
 
 $html .= '</tbody>
