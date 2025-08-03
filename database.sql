@@ -148,13 +148,11 @@ CREATE TABLE Penggajian (
     gaji_bersih DECIMAL(15,2) DEFAULT 0,
     tgl_input DATE NOT NULL,
     bulan_penggajian VARCHAR(2) NOT NULL,
-    status_validasi ENUM('Valid', 'Belum Valid') DEFAULT 'Belum Valid',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (id_guru) REFERENCES Guru(id_guru) ON DELETE CASCADE ON UPDATE CASCADE,
     UNIQUE KEY unique_guru_bulan_tahun_gaji (id_guru, bulan_penggajian, YEAR(tgl_input)),
     INDEX idx_bulan_penggajian (bulan_penggajian),
-    INDEX idx_status_validasi (status_validasi),
     INDEX idx_tgl_input (tgl_input)
 ) ENGINE=InnoDB;
 
