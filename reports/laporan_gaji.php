@@ -13,7 +13,7 @@ $filter_tahun = $_GET['tahun'] ?? date('Y');
 $bulan_list = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
 
 // Build query
-$sql = "SELECT p.id_penggajian, p.no_slip_gaji, g.nama_guru, j.nama_jabatan, p.tgl_input, p.bulan_penggajian, p.status_validasi,
+$sql = "SELECT p.id_penggajian, p.no_slip_gaji, g.nama_guru, j.nama_jabatan, p.tgl_input, p.bulan_penggajian,
                p.gaji_pokok, p.tunjangan_beras, p.tunjangan_kehadiran, p.tunjangan_suami_istri, p.tunjangan_anak,
                p.gaji_kotor, p.potongan_bpjs, p.infak, p.total_potongan, p.gaji_bersih
         FROM Penggajian p 
