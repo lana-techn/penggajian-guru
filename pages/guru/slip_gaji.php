@@ -173,114 +173,99 @@ require_once __DIR__ . '/../../includes/header.php';
     }
     ?>
     <?php if ($slip_data): ?>
-        <div class="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
-            <div class="text-center mb-8 pb-6 border-b-2 border-dashed">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 font-poppins">SLIP GAJI GURU</h1>
-                <?php
-                // Mapping bulan Inggris ke Indonesia
-                $bulan_map = [
-                    'January' => 'Januari',
-                    'February' => 'Februari',
-                    'March' => 'Maret',
-                    'April' => 'April',
-                    'May' => 'Mei',
-                    'June' => 'Juni',
-                    'July' => 'Juli',
-                    'August' => 'Agustus',
-                    'September' => 'September',
-                    'October' => 'Oktober',
-                    'November' => 'November',
-                    'December' => 'Desember'
-                ];
-                // Perbaiki perhitungan periode
-                $periode_bulan_en = '-';
-                $periode_bulan = '-';
-                $periode_tahun = '-';
-                
-                if (isset($slip_data['bulan_penggajian']) && !empty($slip_data['bulan_penggajian'])) {
-                    // Coba format YYYY-MM
-                    if (preg_match('/^\d{4}-\d{2}$/', $slip_data['bulan_penggajian'])) {
-                        $periode_bulan_en = date('F', strtotime($slip_data['bulan_penggajian'] . '-01'));
-                        $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
-                        $periode_tahun = date('Y', strtotime($slip_data['bulan_penggajian'] . '-01'));
-                    } else {
-                        // Fallback ke tgl_input
-                        $periode_bulan_en = date('F', strtotime($slip_data['tgl_input']));
-                        $periode_bulan = $bulan_map[$periode_bulan_en] ?? $periode_bulan_en;
-                        $periode_tahun = date('Y', strtotime($slip_data['tgl_input']));
-                    }
-                }
-                $tanggal_input = isset($slip_data['tgl_input']) ? date('d M Y', strtotime($slip_data['tgl_input'])) : '-';
-                ?>
-                <p class="text-gray-600">Periode: <?= e($periode_bulan . ' ' . $periode_tahun) ?> (Input: <?= e($tanggal_input) ?>)</p>
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border-t-8 border-green-600">
+            <!-- Header Slip Gaji -->
+            <div class="flex flex-col sm:flex-row justify-between items-start pb-6 border-b-2 border-gray-200 mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-20 h-20 bg-green-100 flex items-center justify-center rounded-full">
+                        <i class="fas fa-school text-4xl text-green-600"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 font-poppins">SLIP GAJI</h1>
+                        <p class="text-gray-600">SD Unggulan Muhammadiyah Kretek</p>
+                    </div>
+                </div>
+                <div class="text-left sm:text-right mt-4 sm:mt-0">
+                    <p class="font-semibold text-gray-500">No. Slip: <span class="font-mono text-green-700"><?= e($slip_data['no_slip_gaji'] ?? 'N/A') ?></span></p>
+                    <p class="font-semibold text-gray-500">Periode: <span class="text-green-700"><?= e($periode_bulan . ' ' . $periode_tahun) ?></span></p>
+                </div>
             </div>
 
+            <!-- Detail Karyawan -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
-                <div class="space-y-2">
-                    <div class="flex justify-between"><span class="font-medium text-gray-500">Nama Guru:</span><span class="font-semibold text-gray-800"><?= e($slip_data['nama_guru']) ?></span></div>
-                    <div class="flex justify-between"><span class="font-medium text-gray-500">Jabatan:</span><span class="font-semibold text-gray-800"><?= e($slip_data['nama_jabatan']) ?></span></div>
-                </div>
-                <div class="space-y-2">
+                <div class="space-y-3 p-4 bg-gray-50 rounded-lg">
+                    <div class="flex justify-between"><span class="font-medium text-gray-500">Nama Guru:</span><span class="font-bold text-gray-800"><?= e($slip_data['nama_guru']) ?></span></div>
                     <div class="flex justify-between"><span class="font-medium text-gray-500">ID Guru:</span><span class="font-semibold text-gray-800"><?= e($id_guru_login) ?></span></div>
-                    <div class="flex justify-between"><span class="font-medium text-gray-500">Tanggal Pembayaran:</span><span class="font-semibold text-gray-800"><?= e(date('d M Y', strtotime($slip_data['tgl_input']))) ?></span></div>
+                </div>
+                <div class="space-y-3 p-4 bg-gray-50 rounded-lg">
+                    <div class="flex justify-between"><span class="font-medium text-gray-500">Jabatan:</span><span class="font-semibold text-gray-800"><?= e($slip_data['nama_jabatan']) ?></span></div>
+                    <div class="flex justify-between"><span class="font-medium text-gray-500">Tanggal Bayar:</span><span class="font-semibold text-gray-800"><?= e(date('d F Y', strtotime($slip_data['tgl_input']))) ?></span></div>
                 </div>
             </div>
 
-            <hr class="my-6">
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+            <!-- Rincian Gaji -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10">
+                <!-- Kolom Pendapatan -->
                 <div>
-                    <h3 class="text-lg font-bold text-green-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-arrow-down"></i>PENDAPATAN</h3>
-                    <div class="space-y-2 text-sm border-t pt-3">
-                        <div class="flex justify-between">
+                    <h3 class="text-lg font-bold text-green-700 mb-3 pb-2 border-b border-green-200 flex items-center gap-2"><i class="fas fa-plus-circle"></i>PENDAPATAN</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between py-2 border-b border-gray-100">
                             <span class="text-gray-600">Gaji Pokok</span>
-                            <span class="font-semibold text-gray-800">Rp <?= number_format($slip_data['gaji_pokok'], 2, ',', '.') ?></span>
+                            <span class="font-semibold text-gray-800">Rp <?= number_format($slip_data['gaji_pokok'], 0, ',', '.') ?></span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Tunjangan</span>
-                            <span class="font-semibold text-gray-800">Rp <?= number_format($total_tunjangan, 2, ',', '.') ?></span>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Tunjangan Kehadiran</span>
+                            <span class="font-semibold text-gray-800">Rp <?= number_format($slip_data['tunjangan_kehadiran'] ?? 0, 0, ',', '.') ?></span>
                         </div>
-                        <div class="ml-4 mt-1 text-xs text-gray-500">
-                            <ul class="list-disc list-inside">
-                                <li>Tunjangan Beras: Rp <?= number_format($slip_data['tunjangan_beras'] ?? 0, 2, ',', '.') ?></li>
-                                <li>Tunjangan Kehadiran: Rp <?= number_format($slip_data['tunjangan_kehadiran'] ?? 0, 2, ',', '.') ?></li>
-                                <li>Tunjangan Suami/Istri: Rp <?= number_format($slip_data['tunjangan_suami_istri'] ?? 0, 2, ',', '.') ?></li>
-                                <li>Tunjangan Anak: Rp <?= number_format($slip_data['tunjangan_anak'] ?? 0, 2, ',', '.') ?></li>
-                            </ul>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Tunjangan Suami/Istri</span>
+                            <span class="font-semibold text-gray-800">Rp <?= number_format($slip_data['tunjangan_suami_istri'] ?? 0, 0, ',', '.') ?></span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Tunjangan Anak</span>
+                            <span class="font-semibold text-gray-800">Rp <?= number_format($slip_data['tunjangan_anak'] ?? 0, 0, ',', '.') ?></span>
+                        </div>
+                        <div class="flex justify-between py-2">
+                            <span class="text-gray-600">Tunjangan Beras</span>
+                            <span class="font-semibold text-gray-800">Rp <?= number_format($slip_data['tunjangan_beras'] ?? 0, 0, ',', '.') ?></span>
                         </div>
                     </div>
-                    <div class="flex justify-between mt-3 pt-3 border-t-2 font-bold">
-                        <span>Total Pendapatan (Gaji Kotor)</span>
-                        <span>Rp <?= number_format($slip_data['gaji_pokok'] + $total_tunjangan, 2, ',', '.') ?></span>
+                    <div class="flex justify-between mt-3 pt-3 border-t-2 border-gray-300 font-bold text-base">
+                        <span>Total Pendapatan</span>
+                        <span class="text-green-600">Rp <?= number_format($slip_data['gaji_kotor'], 0, ',', '.') ?></span>
                     </div>
                 </div>
 
+                <!-- Kolom Potongan -->
                 <div>
-                    <h3 class="text-lg font-bold text-red-700 mb-3 flex items-center gap-2"><i class="fa-solid fa-arrow-up"></i>POTONGAN</h3>
-                    <div class="space-y-2 text-sm border-t pt-3">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Total Potongan</span>
-                            <span class="font-semibold text-red-600">- Rp <?= number_format($slip_data['total_potongan'], 2, ',', '.') ?></span>
+                    <h3 class="text-lg font-bold text-red-700 mb-3 pb-2 border-b border-red-200 flex items-center gap-2"><i class="fas fa-minus-circle"></i>POTONGAN</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between py-2 border-b border-gray-100">
+                            <span class="text-gray-600">Potongan BPJS</span>
+                            <span class="font-semibold text-red-600">- Rp <?= number_format($slip_data['potongan_bpjs'] ?? 0, 0, ',', '.') ?></span>
                         </div>
-                        <div class="ml-4 mt-1 text-xs text-gray-500">
-                            <ul class="list-disc list-inside">
-                                <li>BPJS: Rp <?= number_format($slip_data['potongan_bpjs'] ?? 0, 2, ',', '.') ?></li>
-                                <li>Infak: Rp <?= number_format($slip_data['infak'] ?? 0, 2, ',', '.') ?></li>
-                            </ul>
+                        <div class="flex justify-between py-2">
+                            <span class="text-gray-600">Infak</span>
+                            <span class="font-semibold text-red-600">- Rp <?= number_format($slip_data['infak'] ?? 0, 0, ',', '.') ?></span>
                         </div>
                     </div>
-                    <div class="flex justify-between mt-3 pt-3 border-t-2 font-bold">
+                    <div class="flex justify-between mt-3 pt-3 border-t-2 border-gray-300 font-bold text-base">
                         <span>Total Potongan</span>
-                        <span class="text-red-600">- Rp <?= number_format($slip_data['total_potongan'], 2, ',', '.') ?></span>
+                        <span class="text-red-600">- Rp <?= number_format($slip_data['total_potongan'], 0, ',', '.') ?></span>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-10 bg-green-50 p-4 rounded-lg text-center sm:text-right">
-                <p class="text-sm font-semibold text-gray-600">GAJI BERSIH (TAKE HOME PAY)</p>
-                <p class="text-3xl font-bold text-green-800">Rp <?= number_format($slip_data['gaji_bersih'], 2, ',', '.') ?></p>
+            <!-- Total Gaji Bersih -->
+            <div class="mt-10 bg-gradient-to-r from-green-600 to-teal-600 text-white p-6 rounded-lg flex justify-between items-center">
+                <p class="text-lg font-bold uppercase">Gaji Bersih (Take Home Pay)</p>
+                <p class="text-3xl font-extrabold">Rp <?= number_format($slip_data['gaji_bersih'], 0, ',', '.') ?></p>
             </div>
 
+            <!-- Catatan -->
+            <div class="mt-6 text-xs text-gray-500 text-center">
+                <p>Ini adalah slip gaji yang dibuat secara otomatis oleh sistem. Jika ada pertanyaan, silakan hubungi bagian administrasi.</p>
+            </div>
         </div>
     <?php else: ?>
         <div class="bg-white p-10 rounded-xl shadow-lg text-center border border-gray-200">
