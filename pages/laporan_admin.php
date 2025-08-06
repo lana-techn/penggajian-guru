@@ -11,7 +11,7 @@ require_once __DIR__ . '/../includes/header.php';
 $conn = db_connect();
 
 // Ambil data untuk filter
-$karyawan_list = $conn->query("SELECT id_guru, nama_guru FROM Guru ORDER BY nama_guru ASC")->fetch_all(MYSQLI_ASSOC);
+$guru_list = $conn->query("SELECT id_guru, nama_guru FROM Guru ORDER BY nama_guru ASC")->fetch_all(MYSQLI_ASSOC);
 $bulan_opsi = [
     '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', 
     '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus', 
@@ -22,9 +22,9 @@ $bulan_opsi = [
 $sql_summary = "SELECT gaji_bersih, total_potongan FROM Penggajian p WHERE 1=1";
 $params_summary = [];
 $types_summary = '';
-if (!empty($_GET['karyawan'])) {
+if (!empty($_GET['guru'])) {
     $sql_summary .= " AND p.id_guru = ?";
-    $params_summary[] = $_GET['karyawan'];
+    $params_summary[] = $_GET['guru'];
     $types_summary .= 's';
 }
 if (!empty($_GET['bulan'])) {
@@ -73,11 +73,11 @@ $stmt_summary->close();
             <input type="hidden" name="action" value="list">
             
             <div class="col-span-1 xl:col-span-1">
-                <label for="filter_karyawan" class="text-xs font-medium text-gray-500">Karyawan</label>
-                <select name="karyawan" id="filter_karyawan" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500">
+                <label for="filter_guru" class="text-xs font-medium text-gray-500">guru</label>
+                <select name="guru" id="filter_guru" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500">
                     <option value="">Semua</option>
-                    <?php foreach ($karyawan_list as $k): ?>
-                        <option value="<?= e($k['id_guru']) ?>" <?= ($_GET['karyawan'] ?? '') == $k['id_guru'] ? 'selected' : '' ?>><?= e($k['nama_guru']) ?></option>
+                    <?php foreach ($guru_list as $k): ?>
+                        <option value="<?= e($k['id_guru']) ?>" <?= ($_GET['guru'] ?? '') == $k['id_guru'] ? 'selected' : '' ?>><?= e($k['nama_guru']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -186,9 +186,9 @@ $stmt_summary->close();
                             JOIN Guru g ON p.id_guru = g.id_guru WHERE 1=1";
                     $params = [];
                     $types = '';
-                    if (!empty($_GET['karyawan'])) {
+                    if (!empty($_GET['guru'])) {
                         $sql .= " AND p.id_guru = ?";
-                        $params[] = $_GET['karyawan'];
+                        $params[] = $_GET['guru'];
                         $types .= 's';
                     }
                     if (!empty($_GET['bulan'])) {
@@ -318,11 +318,11 @@ function printReport() {
     params.append('action', 'print');
     
     // Tambahkan filter yang sedang aktif
-    const filterKaryawan = document.getElementById('filter_karyawan')?.value;
+    const filterguru = document.getElementById('filter_guru')?.value;
     const filterBulan = document.getElementById('filter_bulan')?.value;
     const filterTahun = document.getElementById('filter_tahun')?.value;
     
-    if (filterKaryawan) params.append('karyawan', filterKaryawan);
+    if (filterguru) params.append('guru', filterguru);
     if (filterBulan) params.append('bulan', filterBulan);
     if (filterTahun) params.append('tahun', filterTahun);
     
@@ -336,11 +336,11 @@ function downloadReportPDF() {
     const params = new URLSearchParams();
     
     // Tambahkan filter yang sedang aktif
-    const filterKaryawan = document.getElementById('filter_karyawan')?.value;
+    const filterguru = document.getElementById('filter_guru')?.value;
     const filterBulan = document.getElementById('filter_bulan')?.value;
     const filterTahun = document.getElementById('filter_tahun')?.value;
     
-    if (filterKaryawan) params.append('karyawan', filterKaryawan);
+    if (filterguru) params.append('guru', filterguru);
     if (filterBulan) params.append('bulan', filterBulan);
     if (filterTahun) params.append('tahun', filterTahun);
     

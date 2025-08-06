@@ -78,7 +78,7 @@ require_once __DIR__ . '/../includes/header.php';
 
     <div class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 border border-gray-200 rounded-lg p-4">
-            <div class="flex justify-between border-b pb-2"><span class="text-sm font-medium text-gray-500">Nama Karyawan</span><span class="text-sm font-semibold text-gray-800"><?= e($gaji_data['nama_guru']) ?></span></div>
+            <div class="flex justify-between border-b pb-2"><span class="text-sm font-medium text-gray-500">Nama guru</span><span class="text-sm font-semibold text-gray-800"><?= e($gaji_data['nama_guru']) ?></span></div>
             <div class="flex justify-between border-b pb-2"><span class="text-sm font-medium text-gray-500">Jabatan</span><span class="text-sm font-semibold text-gray-800"><?= e($gaji_data['nama_jabatan']) ?></span></div>
             <div class="flex justify-between"><span class="text-sm font-medium text-gray-500">Tanggal Gaji</span><span class="text-sm font-semibold text-gray-800"><?= date('d F Y', strtotime($gaji_data['tgl_input'])) ?></span></div>
             <div class="flex justify-between"><span class="text-sm font-medium text-gray-500">Masa Kerja</span><span class="text-sm font-semibold text-gray-800"><?= e($masa_kerja_text) ?></span></div>
