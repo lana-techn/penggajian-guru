@@ -25,7 +25,7 @@ $jabatan_list = $conn->query("SELECT id_jabatan, nama_jabatan FROM Jabatan ORDER
 $sql = "
     SELECT 
         p.id_penggajian as Id_Gaji,
-        g.nama_guru as Nama_Karyawan, 
+        g.nama_guru as Nama_guru, 
         j.nama_jabatan as Nama_Jabatan, 
         p.tgl_input as Tgl_Gaji, 
         (p.tunjangan_suami_istri + p.tunjangan_anak + p.tunjangan_beras + p.tunjangan_kehadiran) as Total_Tunjangan,
@@ -110,7 +110,7 @@ $html = '
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Gaji Karyawan</title>
+    <title>Laporan Gaji guru</title>
     <style>
         @page {
             margin: 15mm;
@@ -307,7 +307,7 @@ $html = '
                     <th style="width: 3%;">No</th>
                     <th style="width: 10%;">ID Gaji</th>
                     <th style="width: 8%;">Tanggal</th>
-                    <th>Nama Karyawan</th>
+                    <th>Nama guru</th>
                     <th style="width: 13%;">Jabatan</th>
                     <th style="width: 11%;" class="text-right">Gaji Pokok</th>
                     <th style="width: 11%;" class="text-right">Tunjangan</th>
@@ -325,7 +325,7 @@ if (!empty($laporan_data)) {
                 <td class="text-center">' . $no++ . '</td>
                 <td class="text-center">' . htmlspecialchars($row['Id_Gaji']) . '</td>
                 <td class="text-center">' . date('d-m-Y', strtotime($row['Tgl_Gaji'])) . '</td>
-                <td>' . htmlspecialchars($row['Nama_Karyawan']) . '</td>
+                <td>' . htmlspecialchars($row['Nama_guru']) . '</td>
                 <td>' . htmlspecialchars($row['Nama_Jabatan']) . '</td>
                 <td class="text-right currency">' . number_format($row['Gaji_Pokok'], 0, ',', '.') . '</td>
                 <td class="text-right currency">' . number_format($row['Total_Tunjangan'], 0, ',', '.') . '</td>
