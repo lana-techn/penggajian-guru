@@ -11,13 +11,15 @@ use Dompdf\Options;
 $conn = db_connect();
 
 // Ambil parameter filter
-$filter_karyawan = $_GET['karyawan'] ?? '';
+$filter_guru = $_GET['guru'] ?? '';
 $filter_bulan = $_GET['bulan'] ?? '';
 $filter_tahun = $_GET['tahun'] ?? date('Y');
 
-$bulan_list = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-               5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-               9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
+$bulan_list = [
+    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', 
+    '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus', 
+    '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+];
 
 // Build query
 $sql = "SELECT p.*, g.nama_guru, j.nama_jabatan
@@ -28,9 +30,9 @@ $sql = "SELECT p.*, g.nama_guru, j.nama_jabatan
 $params = [];
 $types = '';
 
-if (!empty($filter_karyawan)) {
+if (!empty($filter_guru)) {
     $sql .= " AND p.id_guru = ?";
-    $params[] = $filter_karyawan;
+    $params[] = $filter_guru;
     $types .= 's';
 }
 if (!empty($filter_bulan)) {
@@ -52,245 +54,308 @@ if (!empty($types)) {
 }
 $stmt->execute();
 $result = $stmt->get_result();
-
-// Hitung total untuk summary
-$total_gaji_kotor = 0;
-$total_potongan = 0;
-$total_gaji_bersih = 0;
-$data_rows = [];
-
-while ($row = $result->fetch_assoc()) {
-    $data_rows[] = $row;
-    $total_gaji_kotor += $row['gaji_kotor'];
-    $total_potongan += $row['total_potongan'];
-    $total_gaji_bersih += $row['gaji_bersih'];
-}
-
+$laporan_data = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
-
-// Get guru name if filtering by karyawan
-$guru_name = '';
-if (!empty($filter_karyawan) && count($data_rows) > 0) {
-    $guru_name = $data_rows[0]['nama_guru'];
-}
-
 $conn->close();
 
-// Build title berdasarkan filter
-$title_filter = '';
-if (!empty($filter_karyawan) && !empty($guru_name)) {
-    $title_filter .= $guru_name . ' - ';
-}
-if (!empty($filter_bulan)) {
-    $title_filter .= $bulan_list[$filter_bulan] . ' ';
-}
-if (!empty($filter_tahun)) {
-    $title_filter .= $filter_tahun;
+// Tentukan judul dan periode
+$judul_laporan = 'LAPORAN GAJI GURU';
+$periode = '';
+if ($filter_bulan && $filter_tahun) {
+    $periode = "Periode: " . ($bulan_list[$filter_bulan] ?? '') . " " . $filter_tahun;
+} elseif ($filter_tahun) {
+    $periode = "Periode: Tahun " . $filter_tahun;
 }
 
+// Hitung total
+$total_gaji_pokok = array_sum(array_column($laporan_data, 'gaji_pokok'));
+$total_semua_tunjangan = array_sum(array_column($laporan_data, 'tunjangan_beras')) 
+                        + array_sum(array_column($laporan_data, 'tunjangan_kehadiran')) 
+                        + array_sum(array_column($laporan_data, 'tunjangan_suami_istri')) 
+                        + array_sum(array_column($laporan_data, 'tunjangan_anak'));
+$total_semua_potongan = array_sum(array_column($laporan_data, 'total_potongan'));
+$total_gaji_bersih = array_sum(array_column($laporan_data, 'gaji_bersih'));
+
 // Buat HTML untuk PDF
-$html = '<!DOCTYPE html>
+$html = '
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Gaji - ' . htmlspecialchars($title_filter) . '</title>
+    <title>Laporan Gaji guru</title>
     <style>
         @page {
-            margin: 20mm;
+            margin: 15mm;
             size: A4 landscape;
         }
-        body {
+        body { 
             font-family: "Helvetica", Arial, sans-serif;
-            font-size: 11px;
-            margin: 0;
-            padding: 0;
-            line-height: 1.3;
+            font-size: 10px; 
+            color: #333;
+            line-height: 1.4;
+        }
+        .container {
+            width: 100%;
         }
         .header {
-            text-align: center;
-            margin-bottom: 25px;
-            border-bottom: 2px solid #2e7d32;
-            padding-bottom: 15px;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+            margin-bottom: 2px;
         }
         .header-table {
             width: 100%;
             border-collapse: collapse;
         }
         .logo-cell {
-            width: 80px;
+            width: 90px;
             text-align: center;
             vertical-align: middle;
         }
-        .logo {
-            font-family: serif;
-            font-size: 24px;
+        .logo-placeholder {
+            width: 75px;
+            height: 75px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            display: inline-block;
+            text-align: center;
+            line-height: 75px;
+            color: #aaa;
+        }
+        .logo-text {
+            font-family: "Times New Roman", serif;
+            font-size: 32px;
             font-weight: bold;
-            color: #2e7d32;
+            color: #4CAF50;
             line-height: 1;
         }
-        .logo-subtitle {
-            font-family: sans-serif;
+        .logo-subtext {
             font-size: 10px;
-            color: #2e7d32;
+            color: #555;
         }
         .company-info-cell {
             text-align: center;
             vertical-align: middle;
+            padding: 0 10px;
         }
-        .company-name {
-            font-size: 18px;
-            font-weight: bold;
-            color: #2e7d32;
-            margin: 5px 0;
+        .company-name { 
+            font-size: 22px; 
+            font-weight: bold; 
+            color: #2E7D32; 
+            margin: 0;
         }
-        .company-address {
-            font-size: 10px;
-            color: #666;
-            margin: 2px 0;
+        .company-address { 
+            font-size: 11px; 
+            color: #555; 
+            margin: 2px 0; 
         }
-        .report-title {
-            font-size: 16px;
-            font-weight: bold;
+        .report-title-section {
             text-align: center;
-            margin: 20px 0 5px;
-            color: #2e7d32;
+            margin-top: 20px;
+            margin-bottom: 15px;
         }
-        .report-period {
-            font-size: 12px;
-            color: #666;
-            text-align: center;
+        .report-title { 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: #333;
+            text-transform: uppercase;
+            margin: 0;
+        }
+        .report-period { 
+            font-size: 14px; 
+            color: #666; 
+            margin-top: 4px;
+        }
+        .data-table { 
+            width: 100%; 
+            border-collapse: collapse; 
             margin-bottom: 20px;
         }
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-            font-size: 9px;
+        .data-table th, .data-table td { 
+            border: 1px solid #ccc; 
+            padding: 6px 5px; 
+            text-align: left; 
         }
-        .data-table th, .data-table td {
-            border: 1px solid #333;
-            padding: 4px 3px;
-            text-align: left;
-        }
-        .data-table th {
-            background-color: #f5f5f5;
-            font-weight: bold;
+        .data-table th { 
+            background-color: #4CAF50; 
+            color: #ffffff;
+            font-weight: bold; 
             text-align: center;
-            font-size: 8px;
+            font-size: 9.5px;
+            text-transform: uppercase;
         }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .total-row {
-            background-color: #f0f0f0;
+        .data-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .text-right { text-align: right !important; }
+        .text-center { text-align: center !important; }
+        .currency {
+            font-family: "Courier New", monospace;
+        }
+        .totals-table {
+            width: 100%;
+            margin-top: 5px;
+            border-top: 2px solid #4CAF50;
+            padding-top: 10px;
+        }
+        .totals-table td {
+            padding: 5px;
+            font-size: 11px;
+        }
+        .totals-label {
             font-weight: bold;
+            text-align: right;
+            padding-right: 10px;
         }
-        .footer {
-            margin-top: 25px;
+        .totals-value {
+            font-weight: bold;
+            text-align: right;
+            background-color: #f0f0f0;
+            width: 150px;
+        }
+        .footer { 
+            margin-top: 30px; 
             page-break-inside: avoid;
+            font-size: 10px;
         }
         .footer-table {
             width: 100%;
             border-collapse: collapse;
         }
         .print-info {
-            font-size: 9px;
-            color: #666;
+            color: #888;
         }
-        .signature {
-            text-align: center;
-            width: 200px;
+        .signature-block { 
+            text-align: center; 
         }
         .signature-space {
-            height: 50px;
+            height: 60px;
         }
-        .signature-line {
-            border-top: 1px solid #000;
-            padding-top: 5px;
-            font-size: 10px;
+        .signature-name {
+            font-weight: bold;
         }
         .no-data {
             text-align: center;
-            padding: 30px;
+            padding: 40px;
+            font-size: 14px;
             font-style: italic;
-            color: #666;
+            color: #888;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <table class="header-table">
-            <tr>
-                <td class="logo-cell">
-                    <div class="logo">SDUMK</div>
-                    <div class="logo-subtitle">SD Unggulan</div>
-                </td>
-                <td class="company-info-cell">
-                    <div class="company-name">SD UNGGULAN MUHAMMADIYAH KRETEK</div>
-                    <div class="company-address">Jl. Raya Kretek, Bantul, Yogyakarta</div>
-                    <div class="company-address">Telp: (0274) 123-4567 | Email: info@sdumkretek.sch.id</div>
-                    <div class="company-address">Website: www.sdumkretek.sch.id</div>
-                </td>
-                <td class="logo-cell"></td>
-            </tr>
-        </table>
-    </div>
+    <div class="container">
+        <div class="header">
+            <table class="header-table">
+                <tr>
+                    <td class="logo-cell">
+                        <div class="logo-text">SDUMK</div>
+                        <div class="logo-subtext">SD Unggulan</div>
+                    </td>
+                    <td class="company-info-cell">
+                        <div class="company-name">SD UNGGULAN MUHAMMADIYAH KRETEK</div>
+                        <div class="company-address">Jl. Raya Kretek, Bantul, Daerah Istimewa Yogyakarta</div>
+                        <div class="company-address">Telp: (0274) 123-4567 | Email: info@sdumkretek.sch.id</div>
+                    </td>
+                    <td class="logo-cell">
+                        <div class="logo-placeholder">Logo</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="report-title-section">
+            <div class="report-title">' . htmlspecialchars($judul_laporan) . '</div>
+            <div class="report-period">' . htmlspecialchars($periode) . '</div>
+        </div>
+        
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 3%;">No</th>
+                    <th style="width: 10%;">ID Gaji</th>
+                    <th style="width: 8%;">Tanggal</th>
+                    <th>Nama guru</th>
+                    <th style="width: 13%;">Jabatan</th>
+                    <th style="width: 11%;" class="text-right">Gaji Pokok</th>
+                    <th style="width: 11%;" class="text-right">Tunjangan</th>
+                    <th style="width: 11%;" class="text-right">Potongan</th>
+                    <th style="width: 12%;" class="text-right">Gaji Bersih</th>
+                </tr>
+            </thead>
+            <tbody>';
 
-    <div class="report-title">LAPORAN GAJI</div>
-    <div class="report-period">Periode: ' . htmlspecialchars($title_filter) . '</div>
-
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width: 4%;">No</th>
-                <th style="width: 12%;">No Slip</th>
-                <th style="width: 20%;">Nama Guru</th>
-                <th style="width: 15%;">Jabatan</th>
-                <th style="width: 8%;">Periode</th>
-                <th style="width: 12%;">Gaji Kotor</th>
-                <th style="width: 12%;">Potongan</th>
-                <th style="width: 12%;">Gaji Bersih</th>
-            </tr>
-        </thead>
-        <tbody>';
-
-if (count($data_rows) > 0) {
+if (!empty($laporan_data)) {
     $no = 1;
-    foreach ($data_rows as $row) {
-        $html .= '<tr>
-                      <td class="text-center">' . $no++ . '</td>
-                      <td class="text-center">' . htmlspecialchars($row['no_slip_gaji'] ?? 'SG' . date('ym') . str_pad($no-1, 4, '0', STR_PAD_LEFT)) . '</td>
-                      <td>' . htmlspecialchars($row['nama_guru']) . '</td>
-                      <td>' . htmlspecialchars($row['nama_jabatan']) . '</td>
-                      <td class="text-center">' . date('m/Y', strtotime($row['tgl_input'])) . '</td>
-                      <td class="text-right">Rp ' . number_format($row['gaji_kotor'], 0, ',', '.') . '</td>
-                      <td class="text-right">Rp ' . number_format($row['total_potongan'], 0, ',', '.') . '</td>
-                      <td class="text-right font-bold">Rp ' . number_format($row['gaji_bersih'], 0, ',', '.') . '</td>
-                  </tr>';
+    foreach ($laporan_data as $row) {
+        $total_tunjangan_row = $row['tunjangan_beras'] + $row['tunjangan_kehadiran'] + $row['tunjangan_suami_istri'] + $row['tunjangan_anak'];
+        $html .= '
+            <tr>
+                <td class="text-center">' . $no++ . '</td>
+                <td class="text-center">' . htmlspecialchars($row['id_penggajian']) . '</td>
+                <td class="text-center">' . date('d-m-Y', strtotime($row['tgl_input'])) . '</td>
+                <td>' . htmlspecialchars($row['nama_guru']) . '</td>
+                <td>' . htmlspecialchars($row['nama_jabatan']) . '</td>
+                <td class="text-right currency">' . number_format($row['gaji_pokok'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($total_tunjangan_row, 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['total_potongan'], 0, ',', '.') . '</td>
+                <td class="text-right currency" style="font-weight: bold; background-color: #f0f4f0;">' . number_format($row['gaji_bersih'], 0, ',', '.') . '</td>
+            </tr>';
     }
-    $html .= '<tr class="total-row">
-                  <td colspan="5" class="text-center">TOTAL</td>
-                  <td class="text-right">Rp ' . number_format($total_gaji_kotor, 0, ',', '.') . '</td>
-                  <td class="text-right">Rp ' . number_format($total_potongan, 0, ',', '.') . '</td>
-                  <td class="text-right">Rp ' . number_format($total_gaji_bersih, 0, ',', '.') . '</td>
-              </tr>';
 } else {
-    $html .= '<tr><td colspan="8" class="no-data">Tidak ada data yang ditemukan</td></tr>';
+    $html .= '
+            <tr>
+                <td colspan="9" class="no-data">Tidak ada data yang cocok dengan kriteria filter yang dipilih.</td>
+            </tr>';
 }
 
-$html .= '</tbody>
-    </table>
+$html .= '
+            </tbody>
+        </table>';
 
-    <div class="footer">
-        <table class="footer-table">
+if (!empty($laporan_data)) {
+$html .= '
+        <table class="totals-table">
             <tr>
-                <td class="signature">Mengetahui,<br>Kepala Sekolah<br><div class="signature-space"></div><div class="signature-line">(.................................)</div></td>
-                <td class="signature">Dibuat oleh,<br>Admin<br><div class="signature-space"></div><div class="signature-line">' . htmlspecialchars($_SESSION['username'] ?? 'Administrator') . '</div></td>
+                <td style="width: 60%;" class="totals-label">Total Gaji Pokok:</td>
+                <td class="totals-value currency">Rp ' . number_format($total_gaji_pokok, 0, ',', '.') . '</td>
             </tr>
-        </table>
+            <tr>
+                <td class="totals-label">Total Tunjangan:</td>
+                <td class="totals-value currency">Rp ' . number_format($total_semua_tunjangan, 0, ',', '.') . '</td>
+            </tr>
+            <tr>
+                <td class="totals-label">Total Potongan:</td>
+                <td class="totals-value currency">Rp ' . number_format($total_semua_potongan, 0, ',', '.') . '</td>
+            </tr>
+            <tr>
+                <td class="totals-label" style="font-size: 14px; color: #2E7D32;">TOTAL GAJI BERSIH:</td>
+                <td class="totals-value currency" style="font-size: 14px; background-color: #dff0d8; color: #2E7D32;">Rp ' . number_format($total_gaji_bersih, 0, ',', '.') . '</td>
+            </tr>
+        </table>';
+}
+    
+$html .= '
+        <div class="footer">
+            <table class="footer-table">
+                <tr>
+                    <td style="width: 65%; vertical-align: bottom;">
+                        <div class="print-info">
+                            Laporan ini dicetak pada: ' . date('d F Y, H:i:s') . ' | Jumlah Data: ' . count($laporan_data) . '
+                        </div>
+                    </td>
+                    <td style="width: 35%; text-align: right;">
+                        <div class="signature-block">
+                            <div>Bantul, ' . date('d F Y') . '</div>
+                            <div>Mengetahui,</div>
+                            <div class="signature-space"></div>
+                            <div class="signature-name">( ....................................... )</div>
+                            <div class="signature-title">Kepala Sekolah</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
-
-    <div class="print-info">Dokumen ini dicetak pada: ' . date('d F Y, H:i:s') . ' WIB<br><em>Laporan ini adalah hasil cetak sistem dan tidak memerlukan tanda tangan basah</em></div>
 </body>
 </html>';
 
@@ -304,7 +369,7 @@ $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'landscape');
 $dompdf->render();
 
-$filename = 'Laporan_Gaji_' . date('Y-m-d_H-i-s') . '.pdf';
-$dompdf->stream($filename, array("Attachment" => false));
-?>
+$filename = 'Laporan_Gaji_Guru_' . date('Y-m-d_H-i-s') . '.pdf';
+$dompdf->stream($filename, array("Attachment" => false)); // Ubah ke false untuk preview
 
+?>

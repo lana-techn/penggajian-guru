@@ -6,7 +6,7 @@ requireRole('admin');
 $conn = db_connect();
 
 // Ambil parameter filter
-$filter_karyawan = $_GET['karyawan'] ?? '';
+$filter_guru = $_GET['guru'] ?? '';
 $filter_bulan = $_GET['bulan'] ?? '';
 $filter_tahun = $_GET['tahun'] ?? date('Y');
 
@@ -23,9 +23,9 @@ $sql = "SELECT p.id_penggajian, p.no_slip_gaji, g.nama_guru, j.nama_jabatan, p.t
 $params = [];
 $types = '';
 
-if (!empty($filter_karyawan)) {
+if (!empty($filter_guru)) {
     $sql .= " AND p.id_guru = ?";
-    $params[] = $filter_karyawan;
+    $params[] = $filter_guru;
     $types .= 's';
 }
 if (!empty($filter_bulan)) {
@@ -63,8 +63,8 @@ while ($row = $result->fetch_assoc()) {
 
 // Build title berdasarkan filter
 $title_filter = '';
-if (!empty($filter_karyawan)) {
-    $guru_name = $conn->query("SELECT nama_guru FROM Guru WHERE id_guru = '$filter_karyawan'")->fetch_assoc()['nama_guru'];
+if (!empty($filter_guru)) {
+    $guru_name = $conn->query("SELECT nama_guru FROM Guru WHERE id_guru = '$filter_guru'")->fetch_assoc()['nama_guru'];
     $title_filter .= $guru_name . ' - ';
 }
 if (!empty($filter_bulan)) {
