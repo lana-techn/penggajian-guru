@@ -191,7 +191,7 @@ require_once __DIR__ . '/../../includes/header.php';
                 </div>
             </div>
 
-            <!-- Detail Karyawan -->
+            <!-- Detail guru -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 mb-8 text-sm">
                 <div class="space-y-3 p-4 bg-gray-50 rounded-lg">
                     <div class="flex justify-between"><span class="font-medium text-gray-500">Nama Guru:</span><span class="font-bold text-gray-800"><?= e($slip_data['nama_guru']) ?></span></div>
