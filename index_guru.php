@@ -43,70 +43,69 @@ require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
 ?>
 
-<main class="flex-1 p-6 sm:p-8 bg-gray-50">
-    <div class="bg-gradient-to-r from-green-600 to-emerald-700 text-white p-8 rounded-xl shadow-lg mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold font-poppins">Halo, <?= e(explode(' ', $nama_guru)[0]) ?>!</h1>
-        <p class="mt-2 text-lg text-green-100">Selamat datang di dashboard pribadi Anda. Berikut adalah ringkasan informasi Anda.</p>
+<main class="flex-1 p-6 sm:p-8 bg-gray-50/50">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 font-poppins">Selamat Datang, <?= e(explode(' ', $nama_guru)[0]) ?>!</h1>
+        <p class="mt-1 text-gray-500">Berikut adalah ringkasan informasi penggajian Anda.</p>
     </div>
 
     <?php display_flash_message(); ?>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500 hover:shadow-xl transition-shadow duration-300">
-            <div class="flex items-start space-x-4">
-                <div class="flex-shrink-0 bg-green-100 p-4 rounded-full">
-                    <i class="fa-solid fa-money-bill-wave text-green-600 text-2xl"></i>
-                </div>
-                <div class="flex-1">
-                    <p class="text-gray-500 text-sm font-medium">Gaji Terakhir Diterima</p>
-                    <?php if ($gaji_terakhir): ?>
-                        <p class="text-3xl font-bold text-gray-800 mt-1">Rp <?= number_format($gaji_terakhir['gaji_bersih'], 2, ',', '.') ?></p>
-                        <?php
-                        // Mapping bulan Inggris ke Indonesia
-                        $bulan_map = [
-                            '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
-                            '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
-                            '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
-                        ];
-                        $bulan_penggajian = $gaji_terakhir['bulan_penggajian'];
-                        $tahun_penggajian = date('Y', strtotime($gaji_terakhir['tgl_input']));
-                        $nama_bulan = $bulan_map[$bulan_penggajian] ?? $bulan_penggajian;
-                        ?>
-                        <p class="text-xs text-gray-500 mt-1">Periode: <?= e($nama_bulan . ' ' . $tahun_penggajian) ?></p>
-                    <?php else: ?>
-                        <p class="text-lg font-semibold text-gray-700 mt-2">Belum ada data gaji yang dibayarkan.</p>
-                    <?php endif; ?>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">Gaji Terakhir Diterima</p>
+                        <?php if ($gaji_terakhir): ?>
+                            <?php
+                            // Mapping bulan Inggris ke Indonesia
+                            $bulan_map = [
+                                '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
+                                '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
+                                '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+                            ];
+                            $bulan_penggajian = $gaji_terakhir['bulan_penggajian'];
+                            $tahun_penggajian = date('Y', strtotime($gaji_terakhir['tgl_input']));
+                            $nama_bulan = $bulan_map[$bulan_penggajian] ?? $bulan_penggajian;
+                            ?>
+                            <p class="text-4xl font-bold text-green-600 mt-2">Rp <?= number_format($gaji_terakhir['gaji_bersih'], 0, ',', '.') ?></p>
+                            <p class="text-sm text-gray-500 mt-1">Periode: <?= e($nama_bulan . ' ' . $tahun_penggajian) ?></p>
+                        <?php else: ?>
+                            <p class="text-xl font-semibold text-gray-700 mt-4">Belum ada data gaji.</p>
+                        <?php endif; ?>
+                    </div>
+                    <div class="mt-4 sm:mt-0">
+                        <a href="pages/guru/slip_gaji.php" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors duration-300 shadow-sm">
+                            <i class="fa-solid fa-file-invoice-dollar mr-2"></i>
+                            Lihat Semua Slip Gaji
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
-            <div>
-                <div class="flex items-start space-x-4">
-                    <div class="flex-shrink-0 bg-blue-100 p-4 rounded-full">
-                        <i class="fa-solid fa-file-invoice-dollar text-blue-600 text-2xl"></i>
+        <div class="lg:col-span-1">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
+                <div class="flex items-center space-x-4">
+                    <div class="flex-shrink-0 bg-blue-100 p-3 rounded-full">
+                        <i class="fa-solid fa-user-shield text-blue-600 text-xl"></i>
                     </div>
                     <div>
-                        <p class="text-gray-500 text-sm font-medium">Akses Cepat</p>
-                        <p class="text-xl font-bold text-gray-800 mt-1">Slip Gaji Anda</p>
+                        <p class="text-lg font-bold text-gray-800">Profil & Bantuan</p>
+                        <p class="text-sm text-gray-500">Pusat informasi dan data diri</p>
                     </div>
                 </div>
-                <p class="text-sm text-gray-600 mt-3">Lihat rincian pendapatan dan potongan gaji Anda kapan saja.</p>
-            </div>
-            <a href="pages/guru/slip_gaji.php" class="mt-4 block text-center bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300">
-                Lihat Detail Slip Gaji <i class="fa-solid fa-arrow-up-right-from-square ml-2"></i>
-            </a>
-        </div>
-
-        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-yellow-500 hover:shadow-xl transition-shadow duration-300">
-            <div class="flex items-start space-x-4">
-                <div class="flex-shrink-0 bg-yellow-100 p-4 rounded-full">
-                    <i class="fa-solid fa-circle-info text-yellow-600 text-2xl"></i>
-                </div>
-                <div>
-                    <p class="text-gray-500 text-sm font-medium">Pusat Informasi</p>
-                    <p class="text-xl font-bold text-gray-800 mt-1">Bantuan & Dukungan</p>
-                    <p class="text-sm text-gray-600 mt-3">Hubungi admin atau bagian administrasi jika Anda memiliki pertanyaan terkait penggajian atau data pribadi.</p>
+                <div class="mt-6 text-sm text-gray-700 space-y-3">
+                     <p>
+                        <span class="font-semibold">Nama:</span> <?= e($nama_guru) ?>
+                    </p>
+                    <p>
+                        <span class="font-semibold">ID Guru:</span> <?= e($guru_id ?? 'N/A') ?>
+                    </p>
+                    <p class="pt-3 border-t border-gray-200 mt-4">
+                        Jika ada pertanyaan terkait data gaji atau informasi lainnya, silakan hubungi bagian <span class="font-semibold text-blue-700">Administrasi Sekolah</span>.
+                    </p>
                 </div>
             </div>
         </div>
