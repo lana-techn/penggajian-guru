@@ -8,7 +8,7 @@ requireRole('kepala_sekolah');
 $conn = db_connect();
 
 // Ambil data untuk filter
-$jabatan_list = $conn->query("SELECT id_jabatan, nama_jabatan FROM Jabatan ORDER BY nama_jabatan ASC")->fetch_all(MYSQLI_ASSOC);
+$guru_list = $conn->query("SELECT id_guru, nama_guru FROM Guru ORDER BY nama_guru ASC")->fetch_all(MYSQLI_ASSOC);
 
 // Array untuk nama bulan
 $bulan_list = [
@@ -19,7 +19,7 @@ $bulan_list = [
 // Ambil filter dari GET request
 $filter_bulan = $_GET['bulan'] ?? '';
 $filter_tahun = $_GET['tahun'] ?? date('Y'); // Default tahun ini
-$filter_jabatan = $_GET['jabatan'] ?? '';
+$filter_guru = $_GET['id_guru'] ?? '';
 
 // Bangun query dinamis berdasarkan filter
 $sql = "
@@ -52,9 +52,9 @@ if (!empty($filter_tahun)) {
     $params[] = $filter_tahun;
     $types .= 'i';
 }
-if (!empty($filter_jabatan)) {
-    $sql .= " AND j.id_jabatan = ?";
-    $params[] = $filter_jabatan;
+if (!empty($filter_guru)) {
+    $sql .= " AND g.id_guru = ?";
+    $params[] = $filter_guru;
     $types .= 's';
 }
 $sql .= " ORDER BY p.tgl_input DESC, g.nama_guru ASC";
@@ -105,11 +105,11 @@ require_once __DIR__ . '/../../includes/header.php';
             </div>
 
             <div class="col-span-1 xl:col-span-1">
-                <label for="filter_jabatan" class="text-xs font-medium text-gray-500">Jabatan</label>
-                <select name="jabatan" id="filter_jabatan" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500">
-                    <option value="">Semua Jabatan</option>
-                    <?php foreach ($jabatan_list as $jabatan): ?>
-                        <option value="<?= e($jabatan['id_jabatan']) ?>" <?= $filter_jabatan == $jabatan['id_jabatan'] ? 'selected' : '' ?>><?= e($jabatan['nama_jabatan']) ?></option>
+                <label for="filter_guru" class="text-xs font-medium text-gray-500">Nama Guru</label>
+                <select name="id_guru" id="filter_guru" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500">
+                    <option value="">Semua Guru</option>
+                    <?php foreach ($guru_list as $guru): ?>
+                        <option value="<?= e($guru['id_guru']) ?>" <?= $filter_guru == $guru['id_guru'] ? 'selected' : '' ?>><?= e($guru['nama_guru']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -209,12 +209,12 @@ require_once __DIR__ . '/../../includes/header.php';
         const urlParams = new URLSearchParams(window.location.search);
         const bulan = urlParams.get('bulan') || '';
         const tahun = urlParams.get('tahun') || '';
-        const jabatan = urlParams.get('jabatan') || '';
+        const id_guru = urlParams.get('id_guru') || '';
 
         let printUrl = 'laporan_cetak.php?';
         if (bulan) printUrl += 'bulan=' + bulan + '&';
         if (tahun) printUrl += 'tahun=' + tahun + '&';
-        if (jabatan) printUrl += 'jabatan=' + jabatan;
+        if (id_guru) printUrl += 'id_guru=' + id_guru;
 
         window.open(printUrl, '_blank');
     }
@@ -223,12 +223,12 @@ require_once __DIR__ . '/../../includes/header.php';
         const urlParams = new URLSearchParams(window.location.search);
         const bulan = urlParams.get('bulan') || '';
         const tahun = urlParams.get('tahun') || '';
-        const jabatan = urlParams.get('jabatan') || '';
+        const id_guru = urlParams.get('id_guru') || '';
 
         let pdfUrl = 'cetak_pdf_final.php?';
         if (bulan) pdfUrl += 'bulan=' + bulan + '&';
         if (tahun) pdfUrl += 'tahun=' + tahun + '&';
-        if (jabatan) pdfUrl += 'jabatan=' + jabatan;
+        if (id_guru) pdfUrl += 'id_guru=' + id_guru;
 
         window.open(pdfUrl, '_blank');
     }
