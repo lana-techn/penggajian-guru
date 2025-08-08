@@ -89,12 +89,14 @@ $tahun_sekarang = (int)date('Y');
 
 // Filter
 $filter_guru = $_GET['guru'] ?? '';
-$filter_tahun = $_GET['tahun'] ?? '';
+$filter_bulan = $_GET['bulan'] ?? '';
+$filter_tahun = $_GET['tahun'] ?? date('Y');
 
 $sql_where = " WHERE 1=1";
 $params = [];
 $types = '';
 if ($filter_guru) { $sql_where .= " AND r.id_guru = ?"; $params[] = $filter_guru; $types .= 's'; }
+if ($filter_bulan) { $sql_where .= " AND r.bulan = ?"; $params[] = $filter_bulan; $types .= 's'; }
 if ($filter_tahun) { $sql_where .= " AND r.tahun = ?"; $params[] = $filter_tahun; $types .= 'i'; }
 
 $absensi_result = $conn->execute_query("SELECT r.*, g.nama_guru FROM Rekap_Kehadiran r JOIN Guru g ON r.id_guru = g.id_guru" . $sql_where . " ORDER BY r.tahun DESC, r.bulan DESC, g.nama_guru ASC", $params);
@@ -103,17 +105,17 @@ generate_csrf_token();
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
-<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="crudPage()">
-    <!-- Tombol Tambah dan Judul Halaman -->
-    <div class="flex justify-between items-center mb-6">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="crudPage()">                                             
+    <div class="flex justify-between items-center mb-6"> 
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 font-poppins"><?= e($page_title) ?><?php if ($isReadOnlyMode): ?> <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full ml-2">Mode Tampilan</span><?php endif; ?></h1>
-            <p class="text-gray-500 mt-1"><?= $isReadOnlyMode ? 'Lihat rekapitulasi absensi bulanan setiap guru.' : 'Kelola rekapitulasi absensi bulanan setiap guru.' ?></p>
+            <h1 class="text-3xl font-bold text-gray-800 font-poppins"><?= e($page_title) ?><?php if ($isReadOnlyMode): ?>
+            <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full ml-2">Mode Tampilan</span><?php endif; ?></h1>
+            <p class="text-gray-500 mt-1"><?= $isReadOnlyMode ? 'Lihat rekapitulasi absensi bulanan setiap guru.' :'Kelola rekapitulasi absensi bulanan setiap guru.' ?></p> 
         </div>
         <?php if (!$isReadOnlyMode): ?>
-        <button @click="showForm = true; isEdit = false; resetForm()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center transition">
-            <i class="fa-solid fa-plus mr-2"></i> Tambah Rekap
-        </button>
+            <button @click="showForm = true; isEdit = false; resetForm()" class="bg-green-600 text-white px-5 py-2.5 rounded-lg shadow hover:bg-green-700 font-semibold flex items-center transition">
+                <i class="fa-solid fa-plus mr-2"></i> Tambah Rekap
+            </button>
         <?php endif; ?>
     </div>
 
@@ -177,20 +179,42 @@ require_once __DIR__ . '/../includes/header.php';
 
     <!-- Daftar Absensi -->
     <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800 font-poppins">Daftar Rekap Absensi</h3>
-            <form method="GET" action="" class="flex items-center space-x-3">
-                <select name="guru" class="w-full max-w-xs border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500">
-                    <option value="">-- Semua Guru --</option>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+        <form method="get" action="absensi.php" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            
+            <div class="col-span-1">
+                <label for="filter_guru" class="text-xs font-medium text-gray-500">Guru</label>
+                <select name="guru" id="filter_guru" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500">
+                    <option value="">Semua</option>
                     <?php foreach ($guru_list as $g): ?>
                         <option value="<?= e($g['id_guru']) ?>" <?= ($filter_guru == $g['id_guru']) ? 'selected' : '' ?>><?= e($g['nama_guru']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <input type="number" name="tahun" value="<?= e($filter_tahun) ?>" placeholder="Tahun..." class="w-full max-w-xs border-gray-300 rounded-lg shadow-sm focus:ring-green-500 focus:border-green-500">
-                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 font-semibold">Filter</button>
-                <a href="?" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold">Reset</a>
-            </form>
-        </div>
+            </div>
+
+            <div class="col-span-1">
+                <label for="filter_bulan" class="text-xs font-medium text-gray-500">Bulan</label>
+                <select name="bulan" id="filter_bulan" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500">
+                    <option value="">Semua</option>
+                    <?php foreach ($bulan_opsi as $num => $name): ?>
+                        <option value="<?= e($num) ?>" <?= ($filter_bulan == $num) ? 'selected' : '' ?>><?= e($name) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="col-span-1">
+                <label for="filter_tahun" class="text-xs font-medium text-gray-500">Tahun</label>
+                <input type="number" name="tahun" id="filter_tahun" value="<?= e($filter_tahun) ?>" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-green-500">
+            </div>
+
+            <div class="col-span-1 flex space-x-2">
+                 <button type="submit" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-semibold text-sm transition-all">Terapkan</button>
+                 <a href="absensi.php" class="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300" title="Reset Filter">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                 </a>
+            </div>
+        </form>
+    </div>
 
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm text-left text-gray-600">
