@@ -90,7 +90,7 @@ $html = '
         }
         body { 
             font-family: "Helvetica", Arial, sans-serif;
-            font-size: 10px; 
+            font-size: 9px; 
             color: #333;
             line-height: 1.4;
         }
@@ -172,7 +172,7 @@ $html = '
         }
         .data-table th, .data-table td { 
             border: 1px solid #ccc; 
-            padding: 6px 5px; 
+            padding: 5px; 
             text-align: left; 
         }
         .data-table th { 
@@ -180,7 +180,7 @@ $html = '
             color: #ffffff;
             font-weight: bold; 
             text-align: center;
-            font-size: 9.5px;
+            font-size: 8.5px;
             text-transform: uppercase;
         }
         .data-table tbody tr:nth-child(even) {
@@ -271,15 +271,20 @@ $html = '
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 3%;">No</th>
-                    <th style="width: 10%;">ID Gaji</th>
-                    <th style="width: 8%;">Tanggal</th>
-                    <th>Nama guru</th>
-                    <th style="width: 13%;">Jabatan</th>
-                    <th style="width: 11%;" class="text-right">Gaji Pokok</th>
-                    <th style="width: 11%;" class="text-right">Tunjangan</th>
-                    <th style="width: 11%;" class="text-right">Potongan</th>
-                    <th style="width: 12%;" class="text-right">Gaji Bersih</th>
+                    <th>No</th>
+                    <th>No Slip</th>
+                    <th>Nama Guru</th>
+                    <th>Periode</th>
+                    <th class="text-right">Gaji Pokok</th>
+                    <th class="text-right">Tunj. Beras</th>
+                    <th class="text-right">Tunj. Hadir</th>
+                    <th class="text-right">Tunj. Suami/Istri</th>
+                    <th class="text-right">Tunj. Anak</th>
+                    <th class="text-right">Gaji Kotor</th>
+                    <th class="text-right">BPJS</th>
+                    <th class="text-right">Infak</th>
+                    <th class="text-right">Total Potongan</th>
+                    <th class="text-right">Gaji Bersih</th>
                 </tr>
             </thead>
             <tbody>';
@@ -287,16 +292,21 @@ $html = '
 if (!empty($laporan_data)) {
     $no = 1;
     foreach ($laporan_data as $row) {
-        $total_tunjangan_row = $row['tunjangan_beras'] + $row['tunjangan_kehadiran'] + $row['tunjangan_suami_istri'] + $row['tunjangan_anak'];
+        $periode_row = ($bulan_list[$row['bulan_penggajian']] ?? '') . ' ' . date('Y', strtotime($row['tgl_input']));
         $html .= '
             <tr>
                 <td class="text-center">' . $no++ . '</td>
-                <td class="text-center">' . htmlspecialchars($row['id_penggajian']) . '</td>
-                <td class="text-center">' . date('d-m-Y', strtotime($row['tgl_input'])) . '</td>
+                <td class="text-center">' . htmlspecialchars($row['no_slip_gaji']) . '</td>
                 <td>' . htmlspecialchars($row['nama_guru']) . '</td>
-                <td>' . htmlspecialchars($row['nama_jabatan']) . '</td>
+                <td class="text-center">' . htmlspecialchars($periode_row) . '</td>
                 <td class="text-right currency">' . number_format($row['gaji_pokok'], 0, ',', '.') . '</td>
-                <td class="text-right currency">' . number_format($total_tunjangan_row, 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_beras'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_kehadiran'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_suami_istri'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_anak'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['gaji_kotor'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['potongan_bpjs'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['infak'], 0, ',', '.') . '</td>
                 <td class="text-right currency">' . number_format($row['total_potongan'], 0, ',', '.') . '</td>
                 <td class="text-right currency" style="font-weight: bold; background-color: #f0f4f0;">' . number_format($row['gaji_bersih'], 0, ',', '.') . '</td>
             </tr>';
@@ -304,7 +314,7 @@ if (!empty($laporan_data)) {
 } else {
     $html .= '
             <tr>
-                <td colspan="9" class="no-data">Tidak ada data yang cocok dengan kriteria filter yang dipilih.</td>
+                <td colspan="14" class="no-data">Tidak ada data yang cocok dengan kriteria filter yang dipilih.</td>
             </tr>';
 }
 
