@@ -123,7 +123,7 @@ require_once __DIR__ . '/../../includes/header.php';
             
             <div class="col-span-full md:col-span-2 lg:col-span-4 xl:col-span-2 flex items-center justify-start xl:justify-end space-x-2 pt-4 xl:pt-4 border-t xl:border-t-0 xl:border-l border-gray-200 mt-4 xl:mt-0 xl:pl-4">
                  <span class="text-sm font-medium text-gray-600 hidden lg:inline">Aksi Laporan:</span>
-                 <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm font-semibold transition-all flex items-center">
+                 <button onclick="cetakLaporan()" class="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 text-sm font-semibold transition-all flex items-center">
                     <i class="fa-solid fa-print mr-2"></i>Cetak
                 </button>
                 <button onclick="cetakPDF()" class="bg-red-600 text-white px-3 py-2 rounded-md hover:bg-red-700 text-sm font-semibold transition-all flex items-center">
@@ -205,6 +205,20 @@ require_once __DIR__ . '/../../includes/header.php';
 </div>
 
 <script>
+    function cetakLaporan() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const bulan = urlParams.get('bulan') || '';
+        const tahun = urlParams.get('tahun') || '';
+        const jabatan = urlParams.get('jabatan') || '';
+
+        let printUrl = 'laporan_cetak.php?';
+        if (bulan) printUrl += 'bulan=' + bulan + '&';
+        if (tahun) printUrl += 'tahun=' + tahun + '&';
+        if (jabatan) printUrl += 'jabatan=' + jabatan;
+
+        window.open(printUrl, '_blank');
+    }
+
     function cetakPDF() {
         const urlParams = new URLSearchParams(window.location.search);
         const bulan = urlParams.get('bulan') || '';

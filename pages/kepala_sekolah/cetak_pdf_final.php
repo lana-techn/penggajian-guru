@@ -1,50 +1,39 @@
 <?php
-require_once __DIR__ . 
-'/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/functions.php';
 requireLogin();
 requireRole('kepala_sekolah');
 
 // Include DomPDF library
-// Pastikan Anda telah menginstal DomPDF via Composer:
-// composer require dompdf/dompdf
 require_once __DIR__ . '/../../vendor/autoload.php';
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
 $conn = db_connect();
 
-// Ambil filter dari GET request
+// Ambil parameter filter
 $filter_bulan = $_GET['bulan'] ?? '';
 $filter_tahun = $_GET['tahun'] ?? date('Y');
 $filter_jabatan = $_GET['jabatan'] ?? '';
 
-// Ambil data jabatan untuk nama jabatan
-$jabatan_list = $conn->query("SELECT id_jabatan, nama_jabatan FROM Jabatan ORDER BY nama_jabatan ASC")->fetch_all(MYSQLI_ASSOC);
+$bulan_list = [
+    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', 
+    '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus', 
+    '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+];
 
-// Bangun query dinamis berdasarkan filter
-$sql = "
-    SELECT 
-        p.id_penggajian as Id_Gaji,
-        g.nama_guru as Nama_guru, 
-        j.nama_jabatan as Nama_Jabatan, 
-        p.tgl_input as Tgl_Gaji, 
-        (p.tunjangan_suami_istri + p.tunjangan_anak + p.tunjangan_beras + p.tunjangan_kehadiran) as Total_Tunjangan,
-        0 as Total_Lembur, -- Tidak ada lembur di skema baru
-        p.gaji_pokok as Gaji_Pokok,
-        (p.potongan_bpjs + p.infak) as Total_Potongan, 
-        p.gaji_bersih as Gaji_Bersih
-    FROM Penggajian p
-    JOIN Guru g ON p.id_guru = g.id_guru
-    JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
-    WHERE 1=1
-";
+// Build query
+$sql = "SELECT p.*, g.nama_guru, j.nama_jabatan
+        FROM Penggajian p 
+        JOIN Guru g ON p.id_guru = g.id_guru 
+        JOIN Jabatan j ON g.id_jabatan = j.id_jabatan 
+        WHERE 1=1";
 $params = [];
 $types = '';
 
 if (!empty($filter_bulan)) {
-    $sql .= " AND MONTH(p.tgl_input) = ?";
-    $params[] = $filter_bulan;
-    $types .= 'i';
+    $sql .= " AND p.bulan_penggajian = ?";
+    $params[] = str_pad($filter_bulan, 2, '0', STR_PAD_LEFT);
+    $types .= 's';
 }
 if (!empty($filter_tahun)) {
     $sql .= " AND YEAR(p.tgl_input) = ?";
@@ -56,53 +45,36 @@ if (!empty($filter_jabatan)) {
     $params[] = $filter_jabatan;
     $types .= 's';
 }
+
 $sql .= " ORDER BY p.tgl_input DESC, g.nama_guru ASC";
 
 $stmt = $conn->prepare($sql);
-if (!empty($params)) {
+if (!empty($types)) {
     $stmt->bind_param($types, ...$params);
 }
 $stmt->execute();
 $result = $stmt->get_result();
-
 $laporan_data = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 $conn->close();
 
 // Tentukan judul dan periode
-$judul_laporan = 'LAPORAN GAJI ';
-if ($filter_jabatan) {
-    $nama_jabatan_terfilter = '';
-    foreach ($jabatan_list as $j) { 
-        if ($j['id_jabatan'] === $filter_jabatan) 
-            $nama_jabatan_terfilter = $j['nama_jabatan']; 
-    }
-    $judul_laporan .= "PER JABATAN: " . strtoupper($nama_jabatan_terfilter);
-} else {
-    $judul_laporan .= "PER BULAN";
-}
-
+$judul_laporan = 'LAPORAN GAJI GURU';
 $periode = '';
 if ($filter_bulan && $filter_tahun) {
-    $periode = "Periode: " . date('F', mktime(0, 0, 0, $filter_bulan, 10)) . " " . $filter_tahun;
+    $periode = "Periode: " . ($bulan_list[str_pad($filter_bulan, 2, '0', STR_PAD_LEFT)] ?? '') . " " . $filter_tahun;
 } elseif ($filter_tahun) {
     $periode = "Periode: Tahun " . $filter_tahun;
 }
 
 // Hitung total
-$total_gaji_pokok = 0;
-$total_semua_tunjangan = 0;
-$total_semua_lembur = 0;
-$total_semua_potongan = 0;
-$total_gaji_bersih = 0;
-
-foreach ($laporan_data as $row) {
-    $total_gaji_pokok += $row['Gaji_Pokok'];
-    $total_semua_tunjangan += $row['Total_Tunjangan'];
-    $total_semua_lembur += $row['Total_Lembur'];
-    $total_semua_potongan += $row['Total_Potongan'];
-    $total_gaji_bersih += $row['Gaji_Bersih'];
-}
+$total_gaji_pokok = array_sum(array_column($laporan_data, 'gaji_pokok'));
+$total_semua_tunjangan = array_sum(array_column($laporan_data, 'tunjangan_beras')) 
+                        + array_sum(array_column($laporan_data, 'tunjangan_kehadiran')) 
+                        + array_sum(array_column($laporan_data, 'tunjangan_suami_istri')) 
+                        + array_sum(array_column($laporan_data, 'tunjangan_anak'));
+$total_semua_potongan = array_sum(array_column($laporan_data, 'total_potongan'));
+$total_gaji_bersih = array_sum(array_column($laporan_data, 'gaji_bersih'));
 
 // Buat HTML untuk PDF
 $html = '
@@ -110,7 +82,7 @@ $html = '
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Gaji guru</title>
+    <title>Laporan Gaji Guru</title>
     <style>
         @page {
             margin: 15mm;
@@ -118,7 +90,7 @@ $html = '
         }
         body { 
             font-family: "Helvetica", Arial, sans-serif;
-            font-size: 10px; 
+            font-size: 9px; 
             color: #333;
             line-height: 1.4;
         }
@@ -146,6 +118,7 @@ $html = '
             background-color: #f9f9f9;
             display: inline-block;
             text-align: center;
+            line-height: 75px;
             color: #aaa;
         }
         .logo-text {
@@ -199,7 +172,7 @@ $html = '
         }
         .data-table th, .data-table td { 
             border: 1px solid #ccc; 
-            padding: 6px 5px; 
+            padding: 5px; 
             text-align: left; 
         }
         .data-table th { 
@@ -207,14 +180,11 @@ $html = '
             color: #ffffff;
             font-weight: bold; 
             text-align: center;
-            font-size: 9.5px;
+            font-size: 8.5px;
             text-transform: uppercase;
         }
         .data-table tbody tr:nth-child(even) {
             background-color: #f9f9f9;
-        }
-        .data-table tbody tr:hover {
-            background-color: #f1f1f1;
         }
         .text-right { text-align: right !important; }
         .text-center { text-align: center !important; }
@@ -263,9 +233,6 @@ $html = '
         .signature-name {
             font-weight: bold;
         }
-        .signature-title {
-            color: #555;
-        }
         .no-data {
             text-align: center;
             padding: 40px;
@@ -304,15 +271,20 @@ $html = '
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 3%;">No</th>
-                    <th style="width: 10%;">ID Gaji</th>
-                    <th style="width: 8%;">Tanggal</th>
-                    <th>Nama guru</th>
-                    <th style="width: 13%;">Jabatan</th>
-                    <th style="width: 11%;" class="text-right">Gaji Pokok</th>
-                    <th style="width: 11%;" class="text-right">Tunjangan</th>
-                    <th style="width: 11%;" class="text-right">Potongan</th>
-                    <th style="width: 12%;" class="text-right">Gaji Bersih</th>
+                    <th>No</th>
+                    <th>No Slip</th>
+                    <th>Nama Guru</th>
+                    <th>Periode</th>
+                    <th class="text-right">Gaji Pokok</th>
+                    <th class="text-right">Tunj. Beras</th>
+                    <th class="text-right">Tunj. Hadir</th>
+                    <th class="text-right">Tunj. Suami/Istri</th>
+                    <th class="text-right">Tunj. Anak</th>
+                    <th class="text-right">Gaji Kotor</th>
+                    <th class="text-right">BPJS</th>
+                    <th class="text-right">Infak</th>
+                    <th class="text-right">Total Potongan</th>
+                    <th class="text-right">Gaji Bersih</th>
                 </tr>
             </thead>
             <tbody>';
@@ -320,23 +292,29 @@ $html = '
 if (!empty($laporan_data)) {
     $no = 1;
     foreach ($laporan_data as $row) {
+        $periode_row = ($bulan_list[$row['bulan_penggajian']] ?? '') . ' ' . date('Y', strtotime($row['tgl_input']));
         $html .= '
-            <tr class="' . ($no % 2 == 0 ? 'zebra-row' : '') . '">
+            <tr>
                 <td class="text-center">' . $no++ . '</td>
-                <td class="text-center">' . htmlspecialchars($row['Id_Gaji']) . '</td>
-                <td class="text-center">' . date('d-m-Y', strtotime($row['Tgl_Gaji'])) . '</td>
-                <td>' . htmlspecialchars($row['Nama_guru']) . '</td>
-                <td>' . htmlspecialchars($row['Nama_Jabatan']) . '</td>
-                <td class="text-right currency">' . number_format($row['Gaji_Pokok'], 0, ',', '.') . '</td>
-                <td class="text-right currency">' . number_format($row['Total_Tunjangan'], 0, ',', '.') . '</td>
-                <td class="text-right currency">' . number_format($row['Total_Potongan'], 0, ',', '.') . '</td>
-                <td class="text-right currency" style="font-weight: bold; background-color: #f0f4f0;">' . number_format($row['Gaji_Bersih'], 0, ',', '.') . '</td>
+                <td class="text-center">' . htmlspecialchars($row['no_slip_gaji']) . '</td>
+                <td>' . htmlspecialchars($row['nama_guru']) . '</td>
+                <td class="text-center">' . htmlspecialchars($periode_row) . '</td>
+                <td class="text-right currency">' . number_format($row['gaji_pokok'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_beras'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_kehadiran'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_suami_istri'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['tunjangan_anak'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['gaji_kotor'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['potongan_bpjs'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['infak'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['total_potongan'], 0, ',', '.') . '</td>
+                <td class="text-right currency" style="font-weight: bold; background-color: #f0f4f0;">' . number_format($row['gaji_bersih'], 0, ',', '.') . '</td>
             </tr>';
     }
 } else {
     $html .= '
             <tr>
-                <td colspan="9" class="no-data">Tidak ada data yang cocok dengan kriteria filter yang dipilih.</td>
+                <td colspan="14" class="no-data">Tidak ada data yang cocok dengan kriteria filter yang dipilih.</td>
             </tr>';
 }
 
@@ -391,12 +369,8 @@ $html .= '
 </body>
 </html>';
 
-// Uncomment kode di bawah ini untuk mengaktifkan DomPDF
-// Pastikan path ke vendor/autoload.php sudah benar
-// Pastikan Anda sudah menjalankan `php vendor/dompdf/dompdf/bin/load_font.php` jika ada masalah font
-
 $options = new Options();
-$options->set('defaultFont', 'Helvetica'); // Menggunakan Helvetica sebagai font default
+$options->set('defaultFont', 'Helvetica');
 $options->set('isRemoteEnabled', true);
 $options->set('isHtml5ParserEnabled', true);
 
@@ -405,10 +379,8 @@ $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'landscape');
 $dompdf->render();
 
-$filename = 'Laporan_Gaji_' . date('Y-m-d_H-i-s') . '.pdf';
-$dompdf->stream($filename, array("Attachment" => true));
+$filename = 'Laporan_Gaji_Final_' . date('Y-m-d_H-i-s') . '.pdf';
+$dompdf->stream($filename, array("Attachment" => false)); // Preview in browser
 
-// Untuk sementara, jika DomPDF belum diaktifkan, tampilkan HTML (untuk preview)
-// echo $html;
 ?>
 
