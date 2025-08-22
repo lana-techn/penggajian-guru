@@ -83,8 +83,17 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     // Tunjangan Anak (maks 2 anak)
     $gaji['tunjangan_anak'] = calculate_tunjangan_anak($guru_data['jml_anak'] ?? 0);
     
-    // Tunjangan Kehadiran
-    $gaji['tunjangan_kehadiran'] = calculate_tunjangan_kehadiran($jml_terlambat);
+    // Tunjangan Kehadiran dan Potongan Terlambat
+    $tunjangan_kehadiran_base = 100000;
+    $gaji['tunjangan_kehadiran'] = $tunjangan_kehadiran_base;
+    
+    $potongan_terlambat = 0;
+    if ($jml_terlambat > 5) {
+        $potongan_terlambat = $tunjangan_kehadiran_base;
+    } else {
+        $potongan_terlambat = $jml_terlambat * 5000;
+    }
+    $gaji['potongan_terlambat'] = $potongan_terlambat;
     
     // Potongan - gunakan persentase dari database atau nilai default
     $persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2); // Default 2% jika tidak ada di DB
@@ -96,7 +105,7 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $gaji['infak'] = $potongan['infak'];
 
     $gaji['gaji_kotor'] = $gaji['gaji_pokok'] + $gaji['tunjangan_beras'] + $gaji['tunjangan_kehadiran'] + $gaji['tunjangan_suami_istri'] + $gaji['tunjangan_anak'];
-    $gaji['total_potongan'] = $gaji['potongan_bpjs'] + $gaji['infak'];
+    $gaji['total_potongan'] = $gaji['potongan_bpjs'] + $gaji['infak'] + $gaji['potongan_terlambat'];
     $gaji['gaji_bersih'] = $gaji['gaji_kotor'] - $gaji['total_potongan'];
 
     return $gaji;
@@ -351,6 +360,10 @@ require_once __DIR__ . '/../includes/header.php';
                                 <label class="w-1/2 block text-sm font-medium text-gray-700">Infak (2%)</label>
                                 <input type="text" :value="formatCurrency(formData.infak)" class="w-1/2 bg-gray-100 border-gray-300 rounded-lg shadow-sm" readonly>
                             </div>
+                            <div class="flex items-center space-x-2">
+                                <label class="w-1/2 block text-sm font-medium text-gray-700">Potongan Terlambat</label>
+                                <input type="text" :value="formatCurrency(formData.potongan_terlambat)" class="w-1/2 bg-gray-100 border-gray-300 rounded-lg shadow-sm" readonly>
+                            </div>
                         </div>
                     </div>
 
@@ -397,39 +410,6 @@ require_once __DIR__ . '/../includes/header.php';
                     <div>
                         <p class="text-sm text-blue-600 font-medium">Total Data</p>
                         <p class="text-2xl font-bold text-blue-800"><?= count($payroll_data) ?></p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                <div class="flex items-center">
-                    <i class="fas fa-money-bill-wave text-green-600 text-xl mr-3"></i>
-                    <div>
-                        <p class="text-sm text-green-600 font-medium">Total Gaji Bersih</p>
-                        <p class="text-2xl font-bold text-green-800">
-                            Rp <?= number_format(array_sum(array_column($payroll_data, 'gaji_bersih')), 0, ',', '.') ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div class="flex items-center">
-                    <i class="fas fa-chart-line text-orange-600 text-xl mr-3"></i>
-                    <div>
-                        <p class="text-sm text-orange-600 font-medium">Rata-rata Gaji</p>
-                        <p class="text-2xl font-bold text-orange-800">
-                            Rp <?= number_format(array_sum(array_column($payroll_data, 'gaji_bersih')) / count($payroll_data), 0, ',', '.') ?>
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <div class="flex items-center">
-                    <i class="fas fa-percentage text-purple-600 text-xl mr-3"></i>
-                    <div>
-                        <p class="text-sm text-purple-600 font-medium">Total Potongan</p>
-                        <p class="text-2xl font-bold text-purple-800">
-                            Rp <?= number_format(array_sum(array_column($payroll_data, 'total_potongan')), 0, ',', '.') ?>
-                        </p>
                     </div>
                 </div>
             </div>
@@ -483,6 +463,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <th class="px-2 py-4 text-center font-semibold">Gaji Kotor</th>
                         <th class="px-2 py-4 text-center font-semibold">BPJS</th>
                         <th class="px-2 py-4 text-center font-semibold">Infak</th>
+                        <th class="px-2 py-4 text-center font-semibold">Pot. Terlambat</th>
                         <th class="px-2 py-4 text-center font-semibold">Total Potongan</th>
                         <th class="px-2 py-4 text-center font-semibold">Gaji Bersih</th>
                         <th class="px-3 py-4 text-center font-semibold">Aksi</th>
@@ -547,6 +528,11 @@ require_once __DIR__ . '/../includes/header.php';
                                 </td>
                                 <td class="px-2 py-4 text-center">
                                     <span class="text-xs font-medium text-red-600">
+                                        <?= number_format($row['total_potongan'] - $row['potongan_bpjs'] - $row['infak'], 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-2 py-4 text-center">
+                                    <span class="text-xs font-medium text-red-600">
                                         <?= number_format($row['total_potongan'], 0, ',', '.') ?>
                                     </span>
                                 </td>
@@ -584,7 +570,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <?php endforeach; ?>
                     <?php elseif ($payroll_data === null): ?>
                         <tr>
-                            <td colspan="15" class="text-center py-16 text-gray-500">
+                            <td colspan="16" class="text-center py-16 text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fa-solid fa-exclamation-triangle fa-4x mb-4 text-red-300"></i>
                                     <p class="text-lg font-medium text-red-600">Error dalam mengambil data</p>
@@ -594,7 +580,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </tr>
                     <?php else: ?>
                         <tr>
-                            <td colspan="15" class="text-center py-16 text-gray-500">
+                            <td colspan="16" class="text-center py-16 text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fa-solid fa-folder-open fa-4x mb-4 text-gray-300"></i>
                                     <p class="text-lg font-medium text-gray-600">Tidak ada data gaji yang ditemukan</p>
@@ -646,6 +632,7 @@ function gajiPage() {
             tunjangan_anak: 0,
             potongan_bpjs: 0,
             infak: 0,
+            potongan_terlambat: 0,
         },
         
         get gajiKotor() {
@@ -653,7 +640,7 @@ function gajiPage() {
         },
 
         get totalPotongan() {
-            return (this.formData.potongan_bpjs || 0) + (this.formData.infak || 0);
+            return (this.formData.potongan_bpjs || 0) + (this.formData.infak || 0) + (this.formData.potongan_terlambat || 0);
         },
 
         get gajiBersih() {
@@ -671,7 +658,7 @@ function gajiPage() {
             this.formData = {
                 id_penggajian: null, id_guru: '', bulan: '<?= $bulan_sekarang ?>', tahun: <?= $tahun_sekarang ?>, masa_kerja: 0,
                 gaji_pokok: 0, tunjangan_beras: 0, tunjangan_kehadiran: 0, tunjangan_suami_istri: 0,
-                tunjangan_anak: 0, potongan_bpjs: 0, infak: 0,
+                tunjangan_anak: 0, potongan_bpjs: 0, infak: 0, potongan_terlambat: 0,
             };
             document.getElementById('id_guru').value = '';
         },
@@ -697,6 +684,7 @@ function gajiPage() {
                     this.formData.tunjangan_anak = data.tunjangan_anak;
                     this.formData.potongan_bpjs = data.potongan_bpjs;
                     this.formData.infak = data.infak;
+                    this.formData.potongan_terlambat = data.potongan_terlambat;
                     this.formData.masa_kerja = data.masa_kerja;
                 })
                 .catch(error => {
@@ -723,9 +711,12 @@ function gajiPage() {
                 tunjangan_anak: parseFloat(gajiData.tunjangan_anak),
                 potongan_bpjs: parseFloat(gajiData.potongan_bpjs),
                 infak: parseFloat(gajiData.infak),
+                potongan_terlambat: parseFloat(gajiData.total_potongan) - parseFloat(gajiData.potongan_bpjs) - parseFloat(gajiData.infak),
             };
             this.showForm = true;
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Fetch fresh data in background to ensure accuracy, in case logic has changed
+            this.fetchGuruData();
         }
     }
 }
