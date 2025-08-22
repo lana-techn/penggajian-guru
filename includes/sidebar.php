@@ -46,8 +46,8 @@ if ($user_role === 'admin') {
         [
             'name' => 'Presensi',
             'icon' => '<svg class="size-5" ...></svg>',
-            'href' => BASE_URL . '/pages/absensi.php',
-            'active' => $current_page_filename === 'absensi.php',
+            'href' => BASE_URL . '/pages/presensi.php',
+            'active' => $current_page_filename === 'presensi.php',
         ],
         [
             'name' => 'Proses Gaji',
@@ -97,8 +97,8 @@ if ($user_role === 'admin') {
         [
             'name' => 'Data Presensi',
             'icon' => '<svg class="size-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3.89543 5 5 3.89543 5 3H16L21 8V12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-            'href' => BASE_URL . '/pages/absensi.php',
-            'active' => $current_page_filename === 'absensi.php',
+            'href' => BASE_URL . '/pages/presensi.php',
+            'active' => $current_page_filename === 'presensi.php',
         ],
         [
             'name' => 'Data Pengguna',
