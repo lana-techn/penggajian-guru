@@ -14,16 +14,22 @@ $id_guru = $_GET['id_guru'];
 $bulan = $_GET['bulan'];
 $tahun = $_GET['tahun'];
 
-// 1. Ambil data master guru dan jabatan
+// 1. Ambil data master guru, jabatan, dan tunjangan dengan relasi langsung
 $stmt = $conn->prepare("
     SELECT 
         g.id_jabatan,
+        g.id_tunjangan,
         g.tgl_masuk,
         g.status_kawin, 
         g.jml_anak, 
-        j.gaji_awal
+        j.gaji_awal,
+        t.tunjangan_beras,
+        t.tunjangan_kehadiran,
+        t.tunjangan_suami_istri,
+        t.tunjangan_anak as tunjangan_anak_per_anak
     FROM Guru g
     JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
+    LEFT JOIN Tunjangan t ON g.id_tunjangan = t.id_tunjangan
     WHERE g.id_guru = ?
 ");
 $stmt->bind_param('s', $id_guru);
@@ -36,19 +42,7 @@ if (!$guru_data) {
     exit;
 }
 
-$id_jabatan = $guru_data['id_jabatan'];
-
-// 2. Ambil data tunjangan dan potongan
-$tunjangan_stmt = $conn->prepare("SELECT * FROM Tunjangan WHERE id_jabatan = ?");
-$tunjangan_stmt->bind_param('s', $id_jabatan);
-$tunjangan_stmt->execute();
-$tunjangan_data = $tunjangan_stmt->get_result()->fetch_assoc() ?? [];
-
-$potongan_stmt = $conn->prepare("SELECT * FROM Potongan WHERE id_jabatan = ? ORDER BY id_potongan DESC LIMIT 1");
-$potongan_stmt->bind_param('s', $id_jabatan);
-$potongan_stmt->execute();
-$potongan_data = $potongan_stmt->get_result()->fetch_assoc() ?? [];
-
+// 2. Ambil data kehadiran
 $kehadiran_stmt = $conn->prepare("SELECT jml_terlambat FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?");
 $kehadiran_stmt->bind_param('sss', $id_guru, $bulan, $tahun);
 $kehadiran_stmt->execute();
@@ -72,28 +66,31 @@ $kenaikan_tahunan = 50000;
 $gaji_pokok = $gaji_awal + ($masa_kerja_tahun * $kenaikan_tahunan);
 $response['gaji_pokok'] = $gaji_pokok;
 
-// Tunjangan
-// a) Tunjangan Beras (Nilai Tetap)
-$response['tunjangan_beras'] = 50000;
+// Tunjangan dari database
+// a) Tunjangan Beras
+$response['tunjangan_beras'] = (float)($guru_data['tunjangan_beras'] ?? 50000);
 
-// c) Tunjangan Suami/Istri (Dari DB berdasarkan Jabatan)
+// b) Tunjangan Kehadiran
+$response['tunjangan_kehadiran'] = (float)($guru_data['tunjangan_kehadiran'] ?? 100000);
+
+// c) Tunjangan Suami/Istri
 $tunjangan_suami_istri = 0;
 if (in_array($guru_data['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
-    $tunjangan_suami_istri = (float)($tunjangan_data['tunjangan_suami_istri'] ?? 0);
+    $tunjangan_suami_istri = (float)($guru_data['tunjangan_suami_istri'] ?? 0);
 }
 $response['tunjangan_suami_istri'] = $tunjangan_suami_istri;
 
-// d) Tunjangan Anak (Nilai Tetap per anak, maks 2 anak)
-$response['tunjangan_anak'] = calculate_tunjangan_anak($guru_data['jml_anak'] ?? 0);
+// d) Tunjangan Anak (dari database per anak, maksimal 2 anak)
+$jml_anak = min((int)($guru_data['jml_anak'] ?? 0), 2);
+$tunjangan_per_anak = (float)($guru_data['tunjangan_anak_per_anak'] ?? 100000);
+$response['tunjangan_anak'] = $jml_anak * $tunjangan_per_anak;
 
-// b) Tunjangan Kehadiran (Dihitung Otomatis)
-$response['tunjangan_kehadiran'] = calculate_tunjangan_kehadiran($jml_terlambat);
+// Potongan Terlambat
+$response['potongan_terlambat'] = calculate_potongan_terlambat($jml_terlambat);
 
-// Potongan (Ambil dari database dengan fallback ke default)
-$persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2); // Default 2% jika tidak ada di DB
-$persentase_infak = (float)($potongan_data['infak'] ?? 2); // Default 2% jika tidak ada di DB
-
-// Hitung potongan menggunakan fungsi helper
+// Potongan BPJS dan Infak (default 2% each)
+$persentase_bpjs = 2.0;
+$persentase_infak = 2.0;
 $potongan = calculate_potongan($gaji_pokok, $persentase_bpjs, $persentase_infak);
 $response['potongan_bpjs'] = $potongan['potongan_bpjs'];
 $response['infak'] = $potongan['infak'];
