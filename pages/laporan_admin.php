@@ -133,7 +133,7 @@ $stmt_summary->close();
             </div>
             <div class="ml-4">
                 <p class="text-sm text-gray-500 font-medium">Total Gaji Bersih</p>
-                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($total_gaji_bersih, 0, ',', '.') ?></p>
+                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($total_gaji_bersih, 0, ',', '') ?></p>
             </div>
         </div>
         <div class="bg-white p-4 rounded-lg border border-gray-200 flex items-center">
@@ -142,7 +142,7 @@ $stmt_summary->close();
             </div>
             <div class="ml-4">
                 <p class="text-sm text-gray-500 font-medium">Total Potongan</p>
-                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($total_potongan, 0, ',', '.') ?></p>
+                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($total_potongan, 0, ',', '') ?></p>
             </div>
         </div>
         <div class="bg-white p-4 rounded-lg border border-gray-200 flex items-center">
@@ -151,7 +151,7 @@ $stmt_summary->close();
             </div>
             <div class="ml-4">
                 <p class="text-sm text-gray-500 font-medium">Rata-rata Gaji</p>
-                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($rata_gaji, 0, ',', '.') ?></p>
+                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($rata_gaji, 0, ',', '') ?></p>
             </div>
         </div>
     </div>
@@ -161,7 +161,7 @@ $stmt_summary->close();
                 <thead class="text-xs uppercase bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 font-poppins">
                     <tr>
                         <th class="px-3 py-4 text-center font-semibold">No</th>
-                        <th class="px-3 py-4 text-center font-semibold">No Slip</th>
+                        <th class="px-3 py-4 text-center font-semibold">ID Penggajian</th>
                         <th class="px-4 py-4 text-left font-semibold">Nama Guru</th>
                         <th class="px-3 py-4 text-center font-semibold">Periode</th>
                         <th class="px-3 py-4 text-center font-semibold">Gaji Pokok</th>
@@ -172,6 +172,7 @@ $stmt_summary->close();
                         <th class="px-3 py-4 text-center font-semibold">Gaji Kotor</th>
                         <th class="px-3 py-4 text-center font-semibold">BPJS</th>
                         <th class="px-3 py-4 text-center font-semibold">Infak</th>
+                        <th class="px-3 py-4 text-center font-semibold">Pot. Terlambat</th>
                         <th class="px-3 py-4 text-center font-semibold">Total Potongan</th>
                         <th class="px-3 py-4 text-center font-semibold">Gaji Bersih</th>
                         <th class="px-4 py-4 text-center font-semibold">Aksi</th>
@@ -181,7 +182,7 @@ $stmt_summary->close();
                     <?php
                     $sql = "SELECT p.id_penggajian, p.no_slip_gaji, g.nama_guru, p.tgl_input, p.bulan_penggajian, 
                                    p.gaji_pokok, p.tunjangan_beras, p.tunjangan_kehadiran, p.tunjangan_suami_istri, p.tunjangan_anak,
-                                   p.gaji_kotor, p.potongan_bpjs, p.infak, p.total_potongan, p.gaji_bersih
+                                   p.gaji_kotor, p.potongan_bpjs, p.infak, p.potongan_terlambat, p.total_potongan, p.gaji_bersih
                             FROM Penggajian p 
                             JOIN Guru g ON p.id_guru = g.id_guru WHERE 1=1";
                     $params = [];
@@ -218,7 +219,7 @@ $stmt_summary->close();
                                 <td class="px-3 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
                                 <td class="px-3 py-4 text-center">
                                     <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">
-                                        <?= e($row['no_slip_gaji'] ?? 'SG' . date('ym') . str_pad($no-1, 4, '0', STR_PAD_LEFT)) ?>
+                                        <?= e($row['id_penggajian']) ?>
                                     </span>
                                 </td>
                                 <td class="px-4 py-4">
@@ -270,6 +271,11 @@ $stmt_summary->close();
                                 </td>
                                 <td class="px-3 py-4 text-center">
                                     <span class="text-xs font-medium text-red-600">
+                                        <?= number_format($row['potongan_terlambat'] ?? 0, 0, ',', '.') ?>
+                                    </span>
+                                </td>
+                                <td class="px-3 py-4 text-center">
+                                    <span class="text-xs font-medium text-red-600">
                                         <?= number_format($row['total_potongan'] ?? 0, 0, ',', '.') ?>
                                     </span>
                                 </td>
@@ -289,7 +295,7 @@ $stmt_summary->close();
                         <?php 
                             endwhile;
                         else:
-                        echo '<tr><td colspan="15" class="text-center py-16 text-gray-500">';
+                        echo '<tr><td colspan="16" class="text-center py-16 text-gray-500">';
                         echo '<div class="flex flex-col items-center justify-center">';
                         echo '<i class="fa-solid fa-folder-open fa-4x mb-4 text-gray-300"></i>';
                         echo '<p class="text-lg font-medium text-gray-600">Tidak ada data gaji yang ditemukan</p>';

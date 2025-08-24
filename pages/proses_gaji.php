@@ -35,23 +35,30 @@ $bulan_opsi = [
 // --- FUNGSI PERHITUNGAN GAJI DI SISI SERVER ---
 // Fungsi ini menggunakan helper functions untuk memastikan konsistensi perhitungan
 function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
-    $guru_stmt = $conn->prepare("SELECT g.id_jabatan, g.tgl_masuk, g.status_kawin, g.jml_anak, j.gaji_awal as gaji_pokok FROM Guru g JOIN Jabatan j ON g.id_jabatan = j.id_jabatan WHERE g.id_guru = ?");
+    // Get guru data with direct tunjangan relationship
+    $guru_stmt = $conn->prepare("
+        SELECT 
+            g.id_jabatan,
+            g.id_tunjangan,
+            g.tgl_masuk,
+            g.status_kawin, 
+            g.jml_anak, 
+            j.gaji_awal as gaji_pokok,
+            t.tunjangan_beras,
+            t.tunjangan_kehadiran,
+            t.tunjangan_suami_istri,
+            t.tunjangan_anak as tunjangan_anak_per_anak
+        FROM Guru g
+        JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
+        LEFT JOIN Tunjangan t ON g.id_tunjangan = t.id_tunjangan
+        WHERE g.id_guru = ?
+    ");
     $guru_stmt->bind_param('s', $id_guru);
     $guru_stmt->execute();
     $guru_data = $guru_stmt->get_result()->fetch_assoc();
     if (!$guru_data) return null;
-
-    $id_jabatan = $guru_data['id_jabatan'];
-    $tunjangan_stmt = $conn->prepare("SELECT * FROM Tunjangan WHERE id_jabatan = ?");
-    $tunjangan_stmt->bind_param('s', $id_jabatan);
-    $tunjangan_stmt->execute();
-    $tunjangan_data = $tunjangan_stmt->get_result()->fetch_assoc() ?? [];
     
-    $potongan_stmt = $conn->prepare("SELECT * FROM Potongan WHERE id_jabatan = ? ORDER BY id_potongan DESC LIMIT 1");
-    $potongan_stmt->bind_param('s', $id_jabatan);
-    $potongan_stmt->execute();
-    $potongan_data = $potongan_stmt->get_result()->fetch_assoc() ?? [];
-    
+    // Get attendance data
     $kehadiran_stmt = $conn->prepare("SELECT jml_terlambat FROM Rekap_Kehadiran WHERE id_guru = ? AND bulan = ? AND tahun = ?");
     $kehadiran_stmt->bind_param('sss', $id_guru, $bulan, $tahun);
     $kehadiran_stmt->execute();
@@ -70,39 +77,33 @@ function calculate_payroll_server($conn, $id_guru, $bulan, $tahun) {
     $kenaikan_tahunan = 50000;
     $gaji['gaji_pokok'] = $gaji_awal + ($masa_kerja * $kenaikan_tahunan);
     
-    // Tunjangan Tetap
-    $gaji['tunjangan_beras'] = 50000; // Nilai tetap
+    // Tunjangan dari database
+    $gaji['tunjangan_beras'] = (float)($guru_data['tunjangan_beras'] ?? 50000);
+    $gaji['tunjangan_kehadiran'] = (float)($guru_data['tunjangan_kehadiran'] ?? 100000);
     
     // Tunjangan Suami/Istri
     $tunjangan_suami_istri = 0;
     if (in_array($guru_data['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
-        $tunjangan_suami_istri = (float)($tunjangan_data['tunjangan_suami_istri'] ?? 0);
+        $tunjangan_suami_istri = (float)($guru_data['tunjangan_suami_istri'] ?? 0);
     }
     $gaji['tunjangan_suami_istri'] = $tunjangan_suami_istri;
     
-    // Tunjangan Anak (maks 2 anak)
-    $gaji['tunjangan_anak'] = calculate_tunjangan_anak($guru_data['jml_anak'] ?? 0);
+    // Tunjangan Anak (dari database per anak, maksimal 2 anak)
+    $jml_anak = min((int)($guru_data['jml_anak'] ?? 0), 2);
+    $tunjangan_per_anak = (float)($guru_data['tunjangan_anak_per_anak'] ?? 100000);
+    $gaji['tunjangan_anak'] = $jml_anak * $tunjangan_per_anak;
     
-    // Tunjangan Kehadiran dan Potongan Terlambat
-    $tunjangan_kehadiran_base = 100000;
-    $gaji['tunjangan_kehadiran'] = $tunjangan_kehadiran_base;
+    // Potongan Terlambat
+    $gaji['potongan_terlambat'] = calculate_potongan_terlambat($jml_terlambat);
     
-    $potongan_terlambat = 0;
-    if ($jml_terlambat > 5) {
-        $potongan_terlambat = $tunjangan_kehadiran_base;
-    } else {
-        $potongan_terlambat = $jml_terlambat * 5000;
-    }
-    $gaji['potongan_terlambat'] = $potongan_terlambat;
-    
-    // Potongan - gunakan persentase dari database atau nilai default
-    $persentase_bpjs = (float)($potongan_data['potongan_bpjs'] ?? 2); // Default 2% jika tidak ada di DB
-    $persentase_infak = (float)($potongan_data['infak'] ?? 2); // Default 2% jika tidak ada di DB
-
-    // Hitung potongan menggunakan fungsi helper
+    // Potongan BPJS dan Infak (default 2% each)
+    $persentase_bpjs = 2.0;
+    $persentase_infak = 2.0;
     $potongan = calculate_potongan($gaji['gaji_pokok'], $persentase_bpjs, $persentase_infak);
     $gaji['potongan_bpjs'] = $potongan['potongan_bpjs'];
     $gaji['infak'] = $potongan['infak'];
+    $gaji['potongan_bpjs_persen'] = $persentase_bpjs;
+    $gaji['infak_persen'] = $persentase_infak;
 
     $gaji['gaji_kotor'] = $gaji['gaji_pokok'] + $gaji['tunjangan_beras'] + $gaji['tunjangan_kehadiran'] + $gaji['tunjangan_suami_istri'] + $gaji['tunjangan_anak'];
     $gaji['total_potongan'] = $gaji['potongan_bpjs'] + $gaji['infak'] + $gaji['potongan_terlambat'];
@@ -129,26 +130,26 @@ function createSamplePayrollData($conn) {
         
         // Calculate sample payroll data
         $gaji_pokok = 5000000 + ($index * 500000);
-        $tunjangan_beras = 50000;
-        $tunjangan_kehadiran = calculate_tunjangan_kehadiran(0); // Tidak ada keterlambatan
-        $tunjangan_suami_istri = 300000;
-        $tunjangan_anak = calculate_tunjangan_anak(1); // 1 anak
         $potongan = calculate_potongan($gaji_pokok, 2, 2); // 2% BPJS dan 2% Infak
         $potongan_bpjs = $potongan['potongan_bpjs'];
         $infak = $potongan['infak'];
-        $gaji_kotor = $gaji_pokok + $tunjangan_beras + $tunjangan_kehadiran + $tunjangan_suami_istri + $tunjangan_anak;
-        $total_potongan = $potongan_bpjs + $infak;
+        $potongan_terlambat = calculate_potongan_terlambat(0); // Tidak ada keterlambatan
+        $potongan_bpjs_persen = 2.0;
+        $infak_persen = 2.0;
+        
+        // Calculate from tunjangan table (we'll use calculation since data structure changed)
+        $gaji_kotor = $gaji_pokok + 50000 + 100000 + 300000 + 100000; // Basic calculation
+        $total_potongan = $potongan_bpjs + $infak + $potongan_terlambat;
         $gaji_bersih = $gaji_kotor - $total_potongan;
         
-        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, potongan_bpjs, infak, potongan_terlambat, potongan_bpjs_persen, infak_persen, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $masa_kerja = 5 + $index;
         $tgl_input = date('Y-m-d');
         
-        $stmt->bind_param('sssddddddddddsss', 
+        $stmt->bind_param('sssdddddddddsss', 
             $id_penggajian, $no_slip_gaji, $guru['id_guru'], $masa_kerja, 
-            $gaji_pokok, $tunjangan_beras, $tunjangan_kehadiran, $tunjangan_suami_istri, 
-            $tunjangan_anak, $potongan_bpjs, $infak, $gaji_kotor, $total_potongan, 
-            $gaji_bersih, $tgl_input, $current_month);
+            $gaji_pokok, $potongan_bpjs, $infak, $potongan_terlambat, $potongan_bpjs_persen, $infak_persen, 
+            $gaji_kotor, $total_potongan, $gaji_bersih, $tgl_input, $current_month);
         
         $stmt->execute();
     }
@@ -177,8 +178,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_guru'])) {
     $tgl_input = date('Y-m-d');
 
     if ($id_penggajian) { // --- PROSES UPDATE ---
-        $stmt = $conn->prepare("UPDATE Penggajian SET id_guru=?, masa_kerja=?, gaji_pokok=?, tunjangan_beras=?, tunjangan_kehadiran=?, tunjangan_suami_istri=?, tunjangan_anak=?, potongan_bpjs=?, infak=?, gaji_kotor=?, total_potongan=?, gaji_bersih=?, bulan_penggajian=?, tgl_input=? WHERE id_penggajian=?");
-        $stmt->bind_param('sidddddddddssss', $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['tunjangan_beras'], $calculated_gaji['tunjangan_kehadiran'], $calculated_gaji['tunjangan_suami_istri'], $calculated_gaji['tunjangan_anak'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $bulan, $tgl_input, $id_penggajian);
+        $stmt = $conn->prepare("UPDATE Penggajian SET id_guru=?, masa_kerja=?, gaji_pokok=?, potongan_bpjs=?, infak=?, potongan_terlambat=?, potongan_bpjs_persen=?, infak_persen=?, gaji_kotor=?, total_potongan=?, gaji_bersih=?, bulan_penggajian=?, tgl_input=? WHERE id_penggajian=?");
+        $stmt->bind_param('siddddddddsss', $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['potongan_terlambat'], $calculated_gaji['potongan_bpjs_persen'], $calculated_gaji['infak_persen'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $bulan, $tgl_input, $id_penggajian);
         if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil diupdate.');
         else set_flash_message('error', 'Gagal update data gaji: ' . $stmt->error);
     } else { // --- PROSES TAMBAH ---
@@ -188,8 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_guru'])) {
         } else {
             $id_penggajian_baru = 'PG' . date('ymdHis') . $id_guru;
             $no_slip_gaji = 'SG' . date('ym') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, tunjangan_beras, tunjangan_kehadiran, tunjangan_suami_istri, tunjangan_anak, potongan_bpjs, infak, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('sssddddddddddsss', $id_penggajian_baru, $no_slip_gaji, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['tunjangan_beras'], $calculated_gaji['tunjangan_kehadiran'], $calculated_gaji['tunjangan_suami_istri'], $calculated_gaji['tunjangan_anak'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan);
+            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, potongan_bpjs, infak, potongan_terlambat, potongan_bpjs_persen, infak_persen, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('sssdddddddddsss', $id_penggajian_baru, $no_slip_gaji, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['potongan_terlambat'], $calculated_gaji['potongan_bpjs_persen'], $calculated_gaji['infak_persen'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan);
             if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil ditambahkan.');
             else set_flash_message('error', 'Gagal menambah data gaji: ' . $stmt->error);
         }
@@ -231,7 +232,7 @@ if ($debug_count['total'] == 0) {
     }
 }
 
-$sql = "SELECT p.*, g.nama_guru, YEAR(p.tgl_input) as payroll_year FROM Penggajian p JOIN Guru g ON p.id_guru = g.id_guru WHERE 1=1";
+$sql = "SELECT p.*, g.nama_guru, g.status_kawin, g.jml_anak, t.tunjangan_beras, t.tunjangan_kehadiran, t.tunjangan_suami_istri, t.tunjangan_anak as tunjangan_anak_per_anak, YEAR(p.tgl_input) as payroll_year FROM Penggajian p JOIN Guru g ON p.id_guru = g.id_guru LEFT JOIN Tunjangan t ON g.id_tunjangan = t.id_tunjangan WHERE 1=1";
 $params = [];
 $types = '';
 if ($filter_guru) { $sql .= " AND p.id_guru = ?"; $params[] = $filter_guru; $types .= 's'; }
@@ -493,22 +494,33 @@ require_once __DIR__ . '/../includes/header.php';
                                 </td>
                                 <td class="px-2 py-4 text-center">
                                     <span class="text-xs font-medium text-orange-600">
-                                        <?= number_format($row['tunjangan_beras'], 0, ',', '.') ?>
+                                        <?= number_format($row['tunjangan_beras'] ?? 50000, 0, ',', '.') ?>
                                     </span>
                                 </td>
                                 <td class="px-2 py-4 text-center">
                                     <span class="text-xs font-medium text-purple-600">
-                                        <?= number_format($row['tunjangan_kehadiran'], 0, ',', '.') ?>
+                                        <?= number_format($row['tunjangan_kehadiran'] ?? 100000, 0, ',', '.') ?>
                                     </span>
                                 </td>
                                 <td class="px-2 py-4 text-center">
                                     <span class="text-xs font-medium text-indigo-600">
-                                        <?= number_format($row['tunjangan_suami_istri'], 0, ',', '.') ?>
+                                        <?php 
+                                        $tunjangan_suami_istri = 0;
+                                        if (in_array($row['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
+                                            $tunjangan_suami_istri = $row['tunjangan_suami_istri'] ?? 0;
+                                        }
+                                        echo number_format($tunjangan_suami_istri, 0, ',', '.');
+                                        ?>
                                     </span>
                                 </td>
                                 <td class="px-2 py-4 text-center">
                                     <span class="text-xs font-medium text-teal-600">
-                                        <?= number_format($row['tunjangan_anak'], 0, ',', '.') ?>
+                                        <?php 
+                                        $jml_anak = min((int)($row['jml_anak'] ?? 0), 2);
+                                        $tunjangan_per_anak = $row['tunjangan_anak_per_anak'] ?? 100000;
+                                        $total_tunjangan_anak = $jml_anak * $tunjangan_per_anak;
+                                        echo number_format($total_tunjangan_anak, 0, ',', '.');
+                                        ?>
                                     </span>
                                 </td>
                                 <td class="px-2 py-4 text-center">
@@ -528,7 +540,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 </td>
                                 <td class="px-2 py-4 text-center">
                                     <span class="text-xs font-medium text-red-600">
-                                        <?= number_format($row['total_potongan'] - $row['potongan_bpjs'] - $row['infak'], 0, ',', '.') ?>
+                                        <?= number_format($row['potongan_terlambat'] ?? 0, 0, ',', '.') ?>
                                     </span>
                                 </td>
                                 <td class="px-2 py-4 text-center">
@@ -698,20 +710,34 @@ function gajiPage() {
 
         editGaji(gajiData) {
             console.log(gajiData); // <-- DEBUGGING
+            
+            // Calculate tunjangan values from database data
+            const tunjangan_beras = gajiData.tunjangan_beras || 50000;
+            const tunjangan_kehadiran = gajiData.tunjangan_kehadiran || 100000;
+            
+            let tunjangan_suami_istri = 0;
+            if (['Kawin', 'Menikah', 'menikah'].includes(gajiData.status_kawin)) {
+                tunjangan_suami_istri = gajiData.tunjangan_suami_istri || 0;
+            }
+            
+            const jml_anak = Math.min(parseInt(gajiData.jml_anak) || 0, 2);
+            const tunjangan_per_anak = gajiData.tunjangan_anak_per_anak || 100000;
+            const tunjangan_anak = jml_anak * tunjangan_per_anak;
+            
             this.formData = {
                 id_penggajian: gajiData.id_penggajian,
                 id_guru: gajiData.id_guru,
                 bulan: gajiData.bulan_penggajian,
-                tahun: gajiData.payroll_year, // Menggunakan payroll_year dari data
+                tahun: gajiData.payroll_year,
                 masa_kerja: gajiData.masa_kerja,
                 gaji_pokok: parseFloat(gajiData.gaji_pokok),
-                tunjangan_beras: parseFloat(gajiData.tunjangan_beras),
-                tunjangan_kehadiran: parseFloat(gajiData.tunjangan_kehadiran),
-                tunjangan_suami_istri: parseFloat(gajiData.tunjangan_suami_istri),
-                tunjangan_anak: parseFloat(gajiData.tunjangan_anak),
+                tunjangan_beras: tunjangan_beras,
+                tunjangan_kehadiran: tunjangan_kehadiran,
+                tunjangan_suami_istri: tunjangan_suami_istri,
+                tunjangan_anak: tunjangan_anak,
                 potongan_bpjs: parseFloat(gajiData.potongan_bpjs),
                 infak: parseFloat(gajiData.infak),
-                potongan_terlambat: parseFloat(gajiData.total_potongan) - parseFloat(gajiData.potongan_bpjs) - parseFloat(gajiData.infak),
+                potongan_terlambat: parseFloat(gajiData.potongan_terlambat || 0),
             };
             this.showForm = true;
             window.scrollTo({ top: 0, behavior: 'smooth' });
