@@ -429,16 +429,33 @@ function calculate_potongan($gaji_pokok, $persentase_bpjs = 2, $persentase_infak
 }
 
 /**
+ * Menghitung potongan terlambat berdasarkan jumlah keterlambatan.
+ * @param int $jml_terlambat Jumlah keterlambatan
+ * @return float Potongan terlambat
+ */
+function calculate_potongan_terlambat($jml_terlambat)
+{
+    if ($jml_terlambat <= 0) {
+        return 0;
+    } elseif ($jml_terlambat <= 3) {
+        return $jml_terlambat * 5000; // 1-3 kali: 5000 per kali
+    } elseif ($jml_terlambat == 4) {
+        return 20000; // 4 kali: 20000
+    } elseif ($jml_terlambat == 5) {
+        return 25000; // 5 kali: 25000
+    } else {
+        return 100000; // 6+ kali: 100000
+    }
+}
+
+/**
  * Menghitung tunjangan kehadiran berdasarkan jumlah keterlambatan.
  * @param int $jml_terlambat Jumlah keterlambatan
  * @return float Tunjangan kehadiran
  */
 function calculate_tunjangan_kehadiran($jml_terlambat)
 {
-    if ($jml_terlambat > 5) {
-        return 0;
-    }
-    return 100000 - ($jml_terlambat * 5000);
+    return 100000; // Tunjangan kehadiran tetap 100000, potongan terlambat dihitung terpisah
 }
 
 /**
