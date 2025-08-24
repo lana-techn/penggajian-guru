@@ -15,7 +15,7 @@ $bulan_list = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 =>
 // Build query
 $sql = "SELECT p.id_penggajian, p.no_slip_gaji, g.nama_guru, j.nama_jabatan, p.tgl_input, p.bulan_penggajian,
                p.gaji_pokok, p.tunjangan_beras, p.tunjangan_kehadiran, p.tunjangan_suami_istri, p.tunjangan_anak,
-               p.gaji_kotor, p.potongan_bpjs, p.infak, p.total_potongan, p.gaji_bersih
+               p.gaji_kotor, p.potongan_bpjs, p.infak, p.potongan_terlambat, p.total_potongan, p.gaji_bersih
         FROM Penggajian p 
         JOIN Guru g ON p.id_guru = g.id_guru 
         JOIN Jabatan j ON g.id_jabatan = j.id_jabatan 
@@ -243,29 +243,12 @@ if (!empty($filter_tahun)) {
     </div>
 
     <?php if (count($data_rows) > 0): ?>
-        <div class="summary-box">
-            <h3>Ringkasan Penggajian</h3>
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <div class="summary-label">Total Gaji Kotor</div>
-                    <div class="summary-value">Rp <?= number_format($total_gaji_kotor, 0, ',', '.') ?></div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Total Potongan</div>
-                    <div class="summary-value">Rp <?= number_format($total_potongan, 0, ',', '.') ?></div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Total Gaji Bersih</div>
-                    <div class="summary-value">Rp <?= number_format($total_gaji_bersih, 0, ',', '.') ?></div>
-                </div>
-            </div>
-        </div>
 
         <table>
             <thead>
                 <tr>
                     <th style="width: 3%;">No</th>
-                    <th style="width: 8%;">No Slip</th>
+                    <th style="width: 8%;">ID Penggajian</th>
                     <th style="width: 12%;">Nama Guru</th>
                     <th style="width: 8%;">Periode</th>
                     <th style="width: 8%;">Gaji Pokok</th>
@@ -276,6 +259,7 @@ if (!empty($filter_tahun)) {
                     <th style="width: 8%;">Gaji Kotor</th>
                     <th style="width: 6%;">BPJS</th>
                     <th style="width: 6%;">Infak</th>
+                    <th style="width: 6%;">Pot. Terlambat</th>
                     <th style="width: 8%;">Total Potongan</th>
                     <th style="width: 8%;">Gaji Bersih</th>
                 </tr>
@@ -288,7 +272,7 @@ if (!empty($filter_tahun)) {
                     <tr>
                         <td class="text-center"><?= $no++ ?></td>
                         <td class="text-center" style="font-family: monospace; font-size: 10px;">
-                            <?= e($row['no_slip_gaji'] ?? 'SG' . date('ym') . str_pad($no-1, 4, '0', STR_PAD_LEFT)) ?>
+                            <?= e($row['id_penggajian']) ?>
                         </td>
                         <td><?= e($row['nama_guru']) ?></td>
                         <td class="text-center"><?= $bulan_list[intval($row['bulan_penggajian'])] ?? $row['bulan_penggajian'] ?> <?= date('Y', strtotime($row['tgl_input'])) ?></td>
@@ -300,6 +284,7 @@ if (!empty($filter_tahun)) {
                         <td class="text-right">Rp <?= number_format($row['gaji_kotor'], 0, ',', '.') ?></td>
                         <td class="text-right">Rp <?= number_format($row['potongan_bpjs'], 0, ',', '.') ?></td>
                         <td class="text-right">Rp <?= number_format($row['infak'], 0, ',', '.') ?></td>
+                        <td class="text-right">Rp <?= number_format($row['potongan_terlambat'] ?? 0, 0, ',', '.') ?></td>
                         <td class="text-right">Rp <?= number_format($row['total_potongan'], 0, ',', '.') ?></td>
                         <td class="text-right font-bold">Rp <?= number_format($row['gaji_bersih'], 0, ',', '.') ?></td>
                     </tr>
@@ -314,6 +299,7 @@ if (!empty($filter_tahun)) {
                     <td class="text-right">Rp <?= number_format($total_gaji_kotor, 0, ',', '.') ?></td>
                     <td class="text-right">Rp <?= number_format(array_sum(array_column($data_rows, 'potongan_bpjs')), 0, ',', '.') ?></td>
                     <td class="text-right">Rp <?= number_format(array_sum(array_column($data_rows, 'infak')), 0, ',', '.') ?></td>
+                    <td class="text-right">Rp <?= number_format(array_sum(array_column($data_rows, 'potongan_terlambat')), 0, ',', '.') ?></td>
                     <td class="text-right">Rp <?= number_format($total_potongan, 0, ',', '.') ?></td>
                     <td class="text-right">Rp <?= number_format($total_gaji_bersih, 0, ',', '.') ?></td>
                 </tr>

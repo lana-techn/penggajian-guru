@@ -272,7 +272,7 @@ $html = '
             <thead>
                 <tr>
                     <th>No</th>
-                    <th>No Slip</th>
+                    <th>ID Penggajian</th>
                     <th>Nama Guru</th>
                     <th>Periode</th>
                     <th class="text-right">Gaji Pokok</th>
@@ -283,6 +283,7 @@ $html = '
                     <th class="text-right">Gaji Kotor</th>
                     <th class="text-right">BPJS</th>
                     <th class="text-right">Infak</th>
+                    <th class="text-right">Pot. Terlambat</th>
                     <th class="text-right">Total Potongan</th>
                     <th class="text-right">Gaji Bersih</th>
                 </tr>
@@ -296,7 +297,7 @@ if (!empty($laporan_data)) {
         $html .= '
             <tr>
                 <td class="text-center">' . $no++ . '</td>
-                <td class="text-center">' . htmlspecialchars($row['no_slip_gaji']) . '</td>
+                <td class="text-center">' . htmlspecialchars($row['id_penggajian']) . '</td>
                 <td>' . htmlspecialchars($row['nama_guru']) . '</td>
                 <td class="text-center">' . htmlspecialchars($periode_row) . '</td>
                 <td class="text-right currency">' . number_format($row['gaji_pokok'], 0, ',', '.') . '</td>
@@ -307,6 +308,7 @@ if (!empty($laporan_data)) {
                 <td class="text-right currency">' . number_format($row['gaji_kotor'], 0, ',', '.') . '</td>
                 <td class="text-right currency">' . number_format($row['potongan_bpjs'], 0, ',', '.') . '</td>
                 <td class="text-right currency">' . number_format($row['infak'], 0, ',', '.') . '</td>
+                <td class="text-right currency">' . number_format($row['potongan_terlambat'] ?? 0, 0, ',', '.') . '</td>
                 <td class="text-right currency">' . number_format($row['total_potongan'], 0, ',', '.') . '</td>
                 <td class="text-right currency" style="font-weight: bold; background-color: #f0f4f0;">' . number_format($row['gaji_bersih'], 0, ',', '.') . '</td>
             </tr>';
@@ -314,7 +316,7 @@ if (!empty($laporan_data)) {
 } else {
     $html .= '
             <tr>
-                <td colspan="14" class="no-data">Tidak ada data yang cocok dengan kriteria filter yang dipilih.</td>
+                <td colspan="15" class="no-data">Tidak ada data yang cocok dengan kriteria filter yang dipilih.</td>
             </tr>';
 }
 
