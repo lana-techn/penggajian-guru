@@ -305,8 +305,8 @@ $html .= '
             <tr>
                 <td>Tunjangan Kehadiran</td>
                 <td class="text-right">Rp ' . number_format($data['tunjangan_kehadiran'] ?? 0, 0, ',', '.') . '</td>
-                <td></td>
-                <td></td>
+                <td>Potongan Terlambat</td>
+                <td class="text-right">Rp ' . number_format($data['potongan_terlambat'] ?? 0, 0, ',', '.') . '</td>
             </tr>
             <tr>
                 <td>Tunjangan Suami/Istri</td>
