@@ -7,7 +7,7 @@ $conn = db_connect();
 $page_title = 'Proses Gaji Guru';
 
 // Check if required tables exist
-$required_tables = ['Penggajian', 'Guru', 'Jabatan', 'Tunjangan', 'Potongan'];
+$required_tables = ['Penggajian', 'Guru', 'Jabatan', 'Tunjangan'];
 $missing_tables = [];
 foreach ($required_tables as $table) {
     $check = $conn->query("SHOW TABLES LIKE '$table'");
@@ -126,7 +126,6 @@ function createSamplePayrollData($conn) {
     
     foreach ($guru_list as $index => $guru) {
         $id_penggajian = 'PG' . date('ymdHis') . $guru['id_guru'];
-        $no_slip_gaji = 'SG' . date('ym') . str_pad($index + 1, 4, '0', STR_PAD_LEFT);
         
         // Calculate sample payroll data
         $gaji_pokok = 5000000 + ($index * 500000);
@@ -142,12 +141,12 @@ function createSamplePayrollData($conn) {
         $total_potongan = $potongan_bpjs + $infak + $potongan_terlambat;
         $gaji_bersih = $gaji_kotor - $total_potongan;
         
-        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, potongan_bpjs, infak, potongan_terlambat, potongan_bpjs_persen, infak_persen, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, id_guru, masa_kerja, gaji_pokok, potongan_bpjs, infak, potongan_terlambat, potongan_bpjs_persen, infak_persen, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $masa_kerja = 5 + $index;
         $tgl_input = date('Y-m-d');
         
-        $stmt->bind_param('sssdddddddddsss', 
-            $id_penggajian, $no_slip_gaji, $guru['id_guru'], $masa_kerja, 
+        $stmt->bind_param('ssdddddddddsss', 
+            $id_penggajian, $guru['id_guru'], $masa_kerja, 
             $gaji_pokok, $potongan_bpjs, $infak, $potongan_terlambat, $potongan_bpjs_persen, $infak_persen, 
             $gaji_kotor, $total_potongan, $gaji_bersih, $tgl_input, $current_month);
         
@@ -188,9 +187,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_guru'])) {
             set_flash_message('error', "Data gaji untuk guru ini pada periode $bulan_opsi[$bulan] $tahun sudah ada.");
         } else {
             $id_penggajian_baru = 'PG' . date('ymdHis') . $id_guru;
-            $no_slip_gaji = 'SG' . date('ym') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
-            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, no_slip_gaji, id_guru, masa_kerja, gaji_pokok, potongan_bpjs, infak, potongan_terlambat, potongan_bpjs_persen, infak_persen, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('sssdddddddddsss', $id_penggajian_baru, $no_slip_gaji, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['potongan_terlambat'], $calculated_gaji['potongan_bpjs_persen'], $calculated_gaji['infak_persen'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan);
+            $stmt = $conn->prepare("INSERT INTO Penggajian (id_penggajian, id_guru, masa_kerja, gaji_pokok, potongan_bpjs, infak, potongan_terlambat, potongan_bpjs_persen, infak_persen, gaji_kotor, total_potongan, gaji_bersih, tgl_input, bulan_penggajian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param('ssdddddddddsss', $id_penggajian_baru, $id_guru, $calculated_gaji['masa_kerja'], $calculated_gaji['gaji_pokok'], $calculated_gaji['potongan_bpjs'], $calculated_gaji['infak'], $calculated_gaji['potongan_terlambat'], $calculated_gaji['potongan_bpjs_persen'], $calculated_gaji['infak_persen'], $calculated_gaji['gaji_kotor'], $calculated_gaji['total_potongan'], $calculated_gaji['gaji_bersih'], $tgl_input, $bulan);
             if ($stmt->execute()) set_flash_message('success', 'Data gaji berhasil ditambahkan.');
             else set_flash_message('error', 'Gagal menambah data gaji: ' . $stmt->error);
         }
@@ -453,7 +451,6 @@ require_once __DIR__ . '/../includes/header.php';
                 <thead class="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 uppercase font-poppins text-xs">
                     <tr>
                         <th class="px-2 py-4 text-center font-semibold">No</th>
-                        <th class="px-2 py-4 text-center font-semibold">No Slip</th>
                         <th class="px-3 py-4 text-left font-semibold">Nama Guru</th>
                         <th class="px-2 py-4 text-center font-semibold">Periode</th>
                         <th class="px-2 py-4 text-center font-semibold">Gaji Pokok</th>
@@ -475,11 +472,6 @@ require_once __DIR__ . '/../includes/header.php';
                         <?php $no = 1; foreach ($payroll_data as $row): ?>
                             <tr class="border-b border-gray-200 hover:bg-blue-50 transition-colors duration-200">
                                 <td class="px-2 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
-                                <td class="px-2 py-4 text-center">
-                                    <span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">
-                                        <?= e($row['no_slip_gaji'] ?? 'SG' . date('ym') . str_pad($no-1, 4, '0', STR_PAD_LEFT)) ?>
-                                    </span>
-                                </td>
                                 <td class="px-3 py-4">
                                     <div class="font-semibold text-gray-800 text-sm"><?= e($row['nama_guru']) ?></div>
                                 </td>
@@ -582,7 +574,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <?php endforeach; ?>
                     <?php elseif ($payroll_data === null): ?>
                         <tr>
-                            <td colspan="16" class="text-center py-16 text-gray-500">
+                            <td colspan="15" class="text-center py-16 text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fa-solid fa-exclamation-triangle fa-4x mb-4 text-red-300"></i>
                                     <p class="text-lg font-medium text-red-600">Error dalam mengambil data</p>
@@ -592,7 +584,7 @@ require_once __DIR__ . '/../includes/header.php';
                         </tr>
                     <?php else: ?>
                         <tr>
-                            <td colspan="16" class="text-center py-16 text-gray-500">
+                            <td colspan="15" class="text-center py-16 text-gray-500">
                                 <div class="flex flex-col items-center justify-center">
                                     <i class="fa-solid fa-folder-open fa-4x mb-4 text-gray-300"></i>
                                     <p class="text-lg font-medium text-gray-600">Tidak ada data gaji yang ditemukan</p>

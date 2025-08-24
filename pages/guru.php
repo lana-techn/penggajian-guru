@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_kepala_sekolah) {
     $id_guru = $_POST['id_guru'] ?? null;
     $id_user = $_POST['id_user'];
     $id_jabatan = $_POST['id_jabatan'];
+    $id_tunjangan = $_POST['id_tunjangan'] ?? null; // Add tunjangan field
     $nama_guru = trim($_POST['nama_guru']);
     $jenis_kelamin = $_POST['jenis_kelamin'];
     $no_hp = trim($_POST['no_hp']);
@@ -31,13 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$is_kepala_sekolah) {
         set_flash_message('error', 'Kolom yang wajib diisi tidak boleh kosong.');
     } else {
         if ($id_guru) { // Update
-            $stmt = $conn->prepare("UPDATE Guru SET id_user=?, id_jabatan=?, nama_guru=?, jenis_kelamin=?, no_hp=?, nipm=?, tgl_masuk=?, email=?, status_kawin=?, jml_anak=? WHERE id_guru=?");
-            $stmt->bind_param('sssssssssis', $id_user, $id_jabatan, $nama_guru, $jenis_kelamin, $no_hp, $nipm, $tgl_masuk, $email, $status_kawin, $jml_anak, $id_guru);
+            $stmt = $conn->prepare("UPDATE Guru SET id_user=?, id_jabatan=?, id_tunjangan=?, nama_guru=?, jenis_kelamin=?, no_hp=?, nipm=?, tgl_masuk=?, email=?, status_kawin=?, jml_anak=? WHERE id_guru=?");
+            $stmt->bind_param('ssssssssssiss', $id_user, $id_jabatan, $id_tunjangan, $nama_guru, $jenis_kelamin, $no_hp, $nipm, $tgl_masuk, $email, $status_kawin, $jml_anak, $id_guru);
             $action_text = 'diperbarui';
         } else { // Tambah
             $id_guru = 'G' . date('ymdHis');
-            $stmt = $conn->prepare("INSERT INTO Guru (id_guru, id_user, id_jabatan, nama_guru, jenis_kelamin, no_hp, nipm, tgl_masuk, email, status_kawin, jml_anak) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssssi", $id_guru, $id_user, $id_jabatan, $nama_guru, $jenis_kelamin, $no_hp, $nipm, $tgl_masuk, $email, $status_kawin, $jml_anak);
+            $stmt = $conn->prepare("INSERT INTO Guru (id_guru, id_user, id_jabatan, id_tunjangan, nama_guru, jenis_kelamin, no_hp, nipm, tgl_masuk, email, status_kawin, jml_anak) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssssssssi", $id_guru, $id_user, $id_jabatan, $id_tunjangan, $nama_guru, $jenis_kelamin, $no_hp, $nipm, $tgl_masuk, $email, $status_kawin, $jml_anak);
             $action_text = 'ditambahkan';
         }
 
@@ -173,6 +174,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
 
 // Data untuk dropdown
 $jabatan_list = $conn->query("SELECT id_jabatan, nama_jabatan FROM Jabatan ORDER BY nama_jabatan")->fetch_all(MYSQLI_ASSOC);
+$tunjangan_list = $conn->query("SELECT id_tunjangan, tunjangan_suami_istri, tunjangan_anak, tunjangan_beras FROM Tunjangan ORDER BY id_tunjangan")->fetch_all(MYSQLI_ASSOC);
 $users_list_query = "SELECT u.id_user, u.username FROM User u LEFT JOIN Guru g ON u.id_user = g.id_user WHERE u.akses = 'Guru' AND g.id_guru IS NULL";
 $users_list = $conn->query($users_list_query)->fetch_all(MYSQLI_ASSOC);
 
@@ -264,6 +266,18 @@ require_once __DIR__ . '/../includes/header.php';
                                 <option value="<?= e($j['id_jabatan']) ?>"><?= e($j['nama_jabatan']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    <div>
+                        <label for="id_tunjangan" class="block text-sm font-medium text-gray-700">Paket Tunjangan</label>
+                        <select name="id_tunjangan" x-model="formData.id_tunjangan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                            <option value="">- Pilih Paket Tunjangan -</option>
+                            <?php foreach ($tunjangan_list as $t): ?>
+                                <option value="<?= e($t['id_tunjangan']) ?>">
+                                    <?= e($t['id_tunjangan']) ?> - Suami/Istri: Rp <?= number_format($t['tunjangan_suami_istri'], 0, ',', '.') ?>, Anak: Rp <?= number_format($t['tunjangan_anak'], 0, ',', '.') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Pilih paket tunjangan yang sesuai untuk guru ini</p>
                     </div>
                     <div>
                         <label for="tgl_masuk" class="block text-sm font-medium text-gray-700">Tanggal Masuk</label>
@@ -470,6 +484,7 @@ function crudPage() {
                 id_guru: null,
                 id_user: '',
                 id_jabatan: '',
+                id_tunjangan: '',
                 nama_guru: '',
                 jenis_kelamin: 'Laki-laki',
                 no_hp: '',
@@ -488,6 +503,7 @@ function crudPage() {
                 id_guru: guruData.id_guru,
                 id_user: guruData.id_user,
                 id_jabatan: guruData.id_jabatan,
+                id_tunjangan: guruData.id_tunjangan || '',
                 nama_guru: guruData.nama_guru,
                 jenis_kelamin: guruData.jenis_kelamin,
                 no_hp: guruData.no_hp,

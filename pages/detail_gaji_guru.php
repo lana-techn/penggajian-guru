@@ -13,24 +13,42 @@ if (!$id_gaji) {
     exit;
 }
 
-// 1. Ambil data ringkasan dari tabel gaji dan data guru
+// 1. Ambil data ringkasan dari tabel gaji dan data guru dengan tunjangan
 $stmt_gaji = $conn->prepare(
-    "SELECT p.*, g.nama_guru, g.nipm, j.nama_jabatan, g.tgl_masuk
+    "SELECT p.*, g.nama_guru, g.nipm, g.status_kawin, g.jml_anak, j.nama_jabatan, g.tgl_masuk,
+            t.tunjangan_beras, t.tunjangan_kehadiran, t.tunjangan_suami_istri, t.tunjangan_anak
      FROM Penggajian p
      JOIN Guru g ON p.id_guru = g.id_guru
      JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
+     LEFT JOIN Tunjangan t ON g.id_tunjangan = t.id_tunjangan
      WHERE p.id_penggajian = ?"
 );
-$stmt_gaji->bind_param("i", $id_gaji);
+$stmt_gaji->bind_param("s", $id_gaji);
 $stmt_gaji->execute();
 $gaji_data = $stmt_gaji->get_result()->fetch_assoc();
 $stmt_gaji->close();
 
 if (!$gaji_data) {
     set_flash_message('error', 'Data gaji dengan ID tersebut tidak ditemukan.');
-    header('Location: detail_gaji_guru.php');
+    header('Location: laporan_admin.php');
     exit;
 }
+
+// Calculate tunjangan values based on guru data
+$tunjangan_suami_istri_calculated = 0;
+if (in_array($gaji_data['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
+    $tunjangan_suami_istri_calculated = (float)($gaji_data['tunjangan_suami_istri'] ?? 0);
+}
+
+$tunjangan_anak_calculated = 0;
+$jml_anak = min((int)($gaji_data['jml_anak'] ?? 0), 2);
+if ($jml_anak > 0) {
+    $tunjangan_anak_calculated = $jml_anak * (float)($gaji_data['tunjangan_anak'] ?? 0);
+}
+
+// Store calculated values for display
+$gaji_data['tunjangan_suami_istri_display'] = $tunjangan_suami_istri_calculated;
+$gaji_data['tunjangan_anak_display'] = $tunjangan_anak_calculated;
 
 // 2. Data bulan dan tahun untuk periode gaji
 $bulan_gaji = $gaji_data['bulan_penggajian'];
@@ -88,22 +106,22 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <h3 class="font-bold text-lg text-green-700 mb-2">PENDAPATAN</h3>
                 <div class="border rounded-md">
-                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Gaji Pokok</span><span class="font-semibold">Rp <?= number_format($gaji_pokok, 2, ',', '.') ?></span></div>
-                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Tunjangan Beras</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_beras'] ?? 0, 2, ',', '.') ?></span></div>
-                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Tunjangan Kehadiran</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_kehadiran'] ?? 0, 2, ',', '.') ?></span></div>
-                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Tunjangan Suami/Istri</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_suami_istri'] ?? 0, 2, ',', '.') ?></span></div>
-                    <div class="flex justify-between py-2.5 px-4"><span class="text-sm">Tunjangan Anak</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_anak'] ?? 0, 2, ',', '.') ?></span></div>
+                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Gaji Pokok</span><span class="font-semibold">Rp <?= number_format($gaji_pokok, 0, ',', '.') ?></span></div>
+                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Tunjangan Beras</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_beras'] ?? 0, 0, ',', '.') ?></span></div>
+                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Tunjangan Kehadiran</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_kehadiran'] ?? 0, 0, ',', '.') ?></span></div>
+                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">Tunjangan Suami/Istri</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_suami_istri_display'] ?? 0, 0, ',', '.') ?></span></div>
+                    <div class="flex justify-between py-2.5 px-4"><span class="text-sm">Tunjangan Anak</span><span class="font-semibold">Rp <?= number_format($gaji_data['tunjangan_anak_display'] ?? 0, 0, ',', '.') ?></span></div>
                 </div>
-                <div class="flex justify-between py-2.5 px-4 bg-gray-100 rounded-b-md font-bold"><span>Total Pendapatan (Gaji Kotor)</span><span>Rp <?= number_format($gaji_data['gaji_kotor'] ?? 0, 2, ',', '.') ?></span></div>
+                <div class="flex justify-between py-2.5 px-4 bg-gray-100 rounded-b-md font-bold"><span>Total Pendapatan (Gaji Kotor)</span><span>Rp <?= number_format($gaji_data['gaji_kotor'] ?? 0, 0, ',', '.') ?></span></div>
             </div>
 
             <div>
                 <h3 class="font-bold text-lg text-red-700 mb-2">POTONGAN</h3>
                 <div class="border rounded-md">
-                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">BPJS</span><span class="text-sm font-semibold text-red-600">- Rp <?= number_format($gaji_data['potongan_bpjs'] ?? 0, 2, ',', '.') ?></span></div>
-                    <div class="flex justify-between py-2.5 px-4"><span class="text-sm">Infak</span><span class="text-sm font-semibold text-red-600">- Rp <?= number_format($gaji_data['infak'] ?? 0, 2, ',', '.') ?></span></div>
+                    <div class="flex justify-between py-2.5 px-4 border-b"><span class="text-sm">BPJS</span><span class="text-sm font-semibold text-red-600">- Rp <?= number_format($gaji_data['potongan_bpjs'] ?? 0, 0, ',', '.') ?></span></div>
+                    <div class="flex justify-between py-2.5 px-4"><span class="text-sm">Infak</span><span class="text-sm font-semibold text-red-600">- Rp <?= number_format($gaji_data['infak'] ?? 0, 0, ',', '.') ?></span></div>
                 </div>
-                <div class="flex justify-between py-2.5 px-4 bg-gray-100 rounded-b-md font-bold"><span class="text-red-600">Total Potongan</span><span class="text-red-600">- Rp <?= number_format($gaji_data['total_potongan'] ?? 0, 2, ',', '.') ?></span></div>
+                <div class="flex justify-between py-2.5 px-4 bg-gray-100 rounded-b-md font-bold"><span class="text-red-600">Total Potongan</span><span class="text-red-600">- Rp <?= number_format($gaji_data['total_potongan'] ?? 0, 0, ',', '.') ?></span></div>
             </div>
 
             <div>
@@ -119,7 +137,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <div class="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg flex justify-between items-center mt-6">
             <span class="text-lg font-bold font-poppins">GAJI BERSIH (TAKE HOME PAY)</span>
-            <span class="text-xl font-bold">Rp <?= number_format($gaji_data['gaji_bersih'] ?? 0, 2, ',', '.') ?></span>
+            <span class="text-xl font-bold">Rp <?= number_format($gaji_data['gaji_bersih'] ?? 0, 0, ',', '.') ?></span>
         </div>
 
         <div class="flex items-center justify-end pt-6">

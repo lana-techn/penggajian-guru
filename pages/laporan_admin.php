@@ -18,45 +18,7 @@ $bulan_opsi = [
     '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
 ];
 
-// Logika untuk mengambil data hasil filter untuk ringkasan
-$sql_summary = "SELECT gaji_bersih, total_potongan FROM Penggajian p WHERE 1=1";
-$params_summary = [];
-$types_summary = '';
-if (!empty($_GET['guru'])) {
-    $sql_summary .= " AND p.id_guru = ?";
-    $params_summary[] = $_GET['guru'];
-    $types_summary .= 's';
-}
-if (!empty($_GET['bulan'])) {
-    $sql_summary .= " AND p.bulan_penggajian = ?";
-    $params_summary[] = $_GET['bulan'];
-    $types_summary .= 's';
-}
-if (!empty($_GET['tahun'])) {
-    $sql_summary .= " AND YEAR(p.tgl_input) = ?";
-    $params_summary[] = $_GET['tahun'];
-    $types_summary .= 'i';
-}
-$stmt_summary = $conn->prepare($sql_summary);
-if (!empty($types_summary)) {
-    $stmt_summary->bind_param($types_summary, ...$params_summary);
-}
-$stmt_summary->execute();
-$result_summary = $stmt_summary->get_result();
 
-$total_data = 0;
-$total_gaji_bersih = 0;
-$total_potongan = 0;
-$rata_gaji = 0;
-
-if ($result_summary && $result_summary->num_rows > 0) {
-    $data_rows = $result_summary->fetch_all(MYSQLI_ASSOC);
-    $total_data = count($data_rows);
-    $total_gaji_bersih = array_sum(array_column($data_rows, 'gaji_bersih'));
-    $total_potongan = array_sum(array_column($data_rows, 'total_potongan'));
-    $rata_gaji = $total_data > 0 ? $total_gaji_bersih / $total_data : 0;
-}
-$stmt_summary->close();
 
 ?>
 
@@ -116,46 +78,6 @@ $stmt_summary->close();
         </form>
     </div>
 
-    <?php if (isset($_GET['action']) && $total_data > 0): ?>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-        <div class="bg-white p-4 rounded-lg border border-gray-200 flex items-center">
-            <div class="flex-shrink-0 bg-blue-100 text-blue-600 rounded-full h-12 w-12 flex items-center justify-center">
-                <i class="fas fa-receipt text-xl"></i>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm text-gray-500 font-medium">Total Data Gaji</p>
-                <p class="text-2xl font-bold text-gray-800"><?= $total_data ?></p>
-            </div>
-        </div>
-        <div class="bg-white p-4 rounded-lg border border-gray-200 flex items-center">
-            <div class="flex-shrink-0 bg-green-100 text-green-600 rounded-full h-12 w-12 flex items-center justify-center">
-                <i class="fas fa-wallet text-xl"></i>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm text-gray-500 font-medium">Total Gaji Bersih</p>
-                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($total_gaji_bersih, 0, ',', '') ?></p>
-            </div>
-        </div>
-        <div class="bg-white p-4 rounded-lg border border-gray-200 flex items-center">
-            <div class="flex-shrink-0 bg-red-100 text-red-600 rounded-full h-12 w-12 flex items-center justify-center">
-                <i class="fas fa-arrow-down-wide-short text-xl"></i>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm text-gray-500 font-medium">Total Potongan</p>
-                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($total_potongan, 0, ',', '') ?></p>
-            </div>
-        </div>
-        <div class="bg-white p-4 rounded-lg border border-gray-200 flex items-center">
-            <div class="flex-shrink-0 bg-purple-100 text-purple-600 rounded-full h-12 w-12 flex items-center justify-center">
-                <i class="fas fa-chart-pie text-xl"></i>
-            </div>
-            <div class="ml-4">
-                <p class="text-sm text-gray-500 font-medium">Rata-rata Gaji</p>
-                <p class="text-xl font-bold text-gray-800">Rp <?= number_format($rata_gaji, 0, ',', '') ?></p>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
         <div class="overflow-x-auto" style="max-width: 100%;">
             <table class="w-full text-sm text-left text-gray-700" style="min-width: 1200px;">
                 <thead class="text-xs uppercase bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 font-poppins">
@@ -180,11 +102,12 @@ $stmt_summary->close();
                 </thead>
                 <tbody>
                     <?php
-                    $sql = "SELECT p.id_penggajian, p.no_slip_gaji, g.nama_guru, p.tgl_input, p.bulan_penggajian, 
-                                   p.gaji_pokok, p.tunjangan_beras, p.tunjangan_kehadiran, p.tunjangan_suami_istri, p.tunjangan_anak,
-                                   p.gaji_kotor, p.potongan_bpjs, p.infak, p.potongan_terlambat, p.total_potongan, p.gaji_bersih
+                    $sql = "SELECT p.id_penggajian, g.nama_guru, g.status_kawin, g.jml_anak, p.tgl_input, p.bulan_penggajian, 
+                                   p.gaji_pokok, p.gaji_kotor, p.potongan_bpjs, p.infak, p.potongan_terlambat, p.total_potongan, p.gaji_bersih,
+                                   t.tunjangan_beras, t.tunjangan_kehadiran, t.tunjangan_suami_istri, t.tunjangan_anak
                             FROM Penggajian p 
-                            JOIN Guru g ON p.id_guru = g.id_guru WHERE 1=1";
+                            JOIN Guru g ON p.id_guru = g.id_guru
+                            LEFT JOIN Tunjangan t ON g.id_tunjangan = t.id_tunjangan WHERE 1=1";
                     $params = [];
                     $types = '';
                     if (!empty($_GET['guru'])) {
@@ -211,9 +134,20 @@ $stmt_summary->close();
                     $stmt->execute();
                     $result = $stmt->get_result();
 
-                                        if ($result->num_rows > 0):
+                    if ($result->num_rows > 0):
                         $no = 1;
                         while ($row = $result->fetch_assoc()):
+                            // Calculate tunjangan values based on guru data
+                            $tunjangan_suami_istri_calculated = 0;
+                            if (in_array($row['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
+                                $tunjangan_suami_istri_calculated = (float)($row['tunjangan_suami_istri'] ?? 0);
+                            }
+
+                            $tunjangan_anak_calculated = 0;
+                            $jml_anak = min((int)($row['jml_anak'] ?? 0), 2);
+                            if ($jml_anak > 0) {
+                                $tunjangan_anak_calculated = $jml_anak * (float)($row['tunjangan_anak'] ?? 0);
+                            }
                         ?>
                             <tr class="bg-white border-b border-gray-200 hover:bg-blue-50 transition-colors duration-200">
                                 <td class="px-3 py-4 text-center text-gray-600 font-medium"><?= $no++ ?></td>
@@ -246,12 +180,12 @@ $stmt_summary->close();
                                 </td>
                                 <td class="px-3 py-4 text-center">
                                     <span class="text-xs font-medium text-indigo-600">
-                                        <?= number_format($row['tunjangan_suami_istri'] ?? 0, 0, ',', '.') ?>
+                                        <?= number_format($tunjangan_suami_istri_calculated, 0, ',', '.') ?>
                                     </span>
                                 </td>
                                 <td class="px-3 py-4 text-center">
                                     <span class="text-xs font-medium text-teal-600">
-                                        <?= number_format($row['tunjangan_anak'] ?? 0, 0, ',', '.') ?>
+                                        <?= number_format($tunjangan_anak_calculated, 0, ',', '.') ?>
                                     </span>
                                 </td>
                                 <td class="px-3 py-4 text-center">
