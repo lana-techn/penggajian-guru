@@ -30,11 +30,13 @@ if (empty($id_penggajian)) {
     die('ID Penggajian tidak ditemukan.');
 }
 
-// Ambil data penggajian beserta data guru
-$sql = "SELECT p.*, g.nama_guru, g.nipm, g.no_hp, g.email, g.status_kawin, g.jml_anak, j.nama_jabatan, g.tgl_masuk
+// Ambil data penggajian beserta data guru dan tunjangan
+$sql = "SELECT p.*, g.nama_guru, g.nipm, g.no_hp, g.email, g.status_kawin, g.jml_anak, j.nama_jabatan, g.tgl_masuk,
+              t.tunjangan_beras, t.tunjangan_kehadiran, t.tunjangan_suami_istri, t.tunjangan_anak
         FROM Penggajian p 
         JOIN Guru g ON p.id_guru = g.id_guru
         JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
+        LEFT JOIN Tunjangan t ON g.id_tunjangan = t.id_tunjangan
         WHERE p.id_penggajian = ?";
 
 $stmt = $conn->prepare($sql);
@@ -46,6 +48,22 @@ $data = $result->fetch_assoc();
 if (!$data) {
     die('Data penggajian tidak ditemukan.');
 }
+
+// Calculate tunjangan values based on guru data
+$tunjangan_suami_istri_calculated = 0;
+if (in_array($data['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
+    $tunjangan_suami_istri_calculated = (float)($data['tunjangan_suami_istri'] ?? 0);
+}
+
+$tunjangan_anak_calculated = 0;
+$jml_anak = min((int)($data['jml_anak'] ?? 0), 2);
+if ($jml_anak > 0) {
+    $tunjangan_anak_calculated = $jml_anak * (float)($data['tunjangan_anak'] ?? 0);
+}
+
+// Store calculated values for display
+$data['tunjangan_suami_istri_display'] = $tunjangan_suami_istri_calculated;
+$data['tunjangan_anak_display'] = $tunjangan_anak_calculated;
 
 $bulan_opsi = [
     '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April', 
@@ -310,13 +328,13 @@ $html .= '
             </tr>
             <tr>
                 <td>Tunjangan Suami/Istri</td>
-                <td class="text-right">Rp ' . number_format($data['tunjangan_suami_istri'] ?? 0, 0, ',', '.') . '</td>
+                <td class="text-right">Rp ' . number_format($data['tunjangan_suami_istri_display'] ?? 0, 0, ',', '.') . '</td>
                 <td></td>
                 <td></td>
             </tr>
             <tr>
                 <td>Tunjangan Anak</td>
-                <td class="text-right">Rp ' . number_format($data['tunjangan_anak'] ?? 0, 0, ',', '.') . '</td>
+                <td class="text-right">Rp ' . number_format($data['tunjangan_anak_display'] ?? 0, 0, ',', '.') . '</td>
                 <td></td>
                 <td></td>
             </tr>
