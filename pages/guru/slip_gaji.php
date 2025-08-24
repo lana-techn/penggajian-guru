@@ -186,7 +186,7 @@ require_once __DIR__ . '/../../includes/header.php';
                     </div>
                 </div>
                 <div class="text-left sm:text-right mt-4 sm:mt-0">
-                    <p class="font-semibold text-gray-500">No. Slip: <span class="font-mono text-green-700"><?= e($slip_data['no_slip_gaji'] ?? 'N/A') ?></span></p>
+                    <p class="font-semibold text-gray-500">ID Penggajian: <span class="font-mono text-green-700"><?= e($slip_data['id_penggajian'] ?? 'N/A') ?></span></p>
                     <p class="font-semibold text-gray-500">Periode: <span class="text-green-700"><?= e($periode_bulan . ' ' . $periode_tahun) ?></span></p>
                 </div>
             </div>

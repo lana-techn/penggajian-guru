@@ -21,10 +21,12 @@ if (!$id_gaji) {
 
 // Ambil data slip gaji utama berdasarkan ID dari URL
 $stmt_gaji = $conn->prepare(
-    "SELECT p.*, g.nama_guru, g.nipm, g.tgl_masuk, j.nama_jabatan 
+    "SELECT p.*, g.nama_guru, g.nipm, g.tgl_masuk, g.status_kawin, g.jml_anak, j.nama_jabatan,
+            t.tunjangan_beras, t.tunjangan_kehadiran, t.tunjangan_suami_istri, t.tunjangan_anak
      FROM Penggajian p 
      JOIN Guru g ON p.id_guru = g.id_guru 
      JOIN Jabatan j ON g.id_jabatan = j.id_jabatan
+     LEFT JOIN Tunjangan t ON g.id_tunjangan = t.id_tunjangan
      WHERE p.id_penggajian = ?"
 );
 $stmt_gaji->bind_param("s", $id_gaji);
@@ -35,6 +37,22 @@ $stmt_gaji->close();
 if (!$slip_data) {
     die("Data slip gaji dengan ID tersebut tidak ditemukan.");
 }
+
+// Calculate tunjangan values based on guru data
+$tunjangan_suami_istri_calculated = 0;
+if (in_array($slip_data['status_kawin'], ['Kawin', 'Menikah', 'menikah'])) {
+    $tunjangan_suami_istri_calculated = (float)($slip_data['tunjangan_suami_istri'] ?? 0);
+}
+
+$tunjangan_anak_calculated = 0;
+$jml_anak = min((int)($slip_data['jml_anak'] ?? 0), 2);
+if ($jml_anak > 0) {
+    $tunjangan_anak_calculated = $jml_anak * (float)($slip_data['tunjangan_anak'] ?? 0);
+}
+
+// Store calculated values for display
+$slip_data['tunjangan_suami_istri_display'] = $tunjangan_suami_istri_calculated;
+$slip_data['tunjangan_anak_display'] = $tunjangan_anak_calculated;
 
 // Mapping bulan
 $bulan_map = [
@@ -152,23 +170,23 @@ $html = '
                 <td class="section-title" colspan="2">POTONGAN:</td>
             </tr>
             <tr>
-                <td>• Gaji Pokok</td><td>: Rp '.number_format($slip_data['gaji_pokok'] ?? 0, 2, ',', '.').'</td>
-                <td>• BPJS</td><td>: Rp '.number_format($slip_data['potongan_bpjs'] ?? 0, 2, ',', '.').'</td>
+                <td>• Gaji Pokok</td><td>: Rp '.number_format($slip_data['gaji_pokok'] ?? 0, 0, ',', '.').'</td>
+                <td>• BPJS</td><td>: Rp '.number_format($slip_data['potongan_bpjs'] ?? 0, 0, ',', '.').'</td>
             </tr>
             <tr>
-                <td>• Tunjangan Beras</td><td>: Rp '.number_format($slip_data['tunjangan_beras'] ?? 0, 2, ',', '.').'</td>
-                <td>• Infak</td><td>: Rp '.number_format($slip_data['infak'] ?? 0, 2, ',', '.').'</td>
+                <td>• Tunjangan Beras</td><td>: Rp '.number_format($slip_data['tunjangan_beras'] ?? 0, 0, ',', '.').'</td>
+                <td>• Infak</td><td>: Rp '.number_format($slip_data['infak'] ?? 0, 0, ',', '.').'</td>
             </tr>
             <tr>
-                <td>• Tunjangan Kehadiran</td><td>: Rp '.number_format($slip_data['tunjangan_kehadiran'] ?? 0, 2, ',', '.').'</td>
+                <td>• Tunjangan Kehadiran</td><td>: Rp '.number_format($slip_data['tunjangan_kehadiran'] ?? 0, 0, ',', '.').'</td>
                 <td></td><td></td>
             </tr>
             <tr>
-                <td>• Tunjangan Suami/Istri</td><td>: Rp '.number_format($slip_data['tunjangan_suami_istri'] ?? 0, 2, ',', '.').'</td>
+                <td>• Tunjangan Suami/Istri</td><td>: Rp '.number_format($slip_data['tunjangan_suami_istri_display'] ?? 0, 0, ',', '.').'</td>
                 <td></td><td></td>
             </tr>
             <tr>
-                <td>• Tunjangan Anak</td><td>: Rp '.number_format($slip_data['tunjangan_anak'] ?? 0, 2, ',', '.').'</td>
+                <td>• Tunjangan Anak</td><td>: Rp '.number_format($slip_data['tunjangan_anak_display'] ?? 0, 0, ',', '.').'</td>
                 <td></td><td></td>
             </tr>
             <tr>
@@ -176,15 +194,15 @@ $html = '
                 <td colspan="2" style="border-top:1px solid #000;">Total Potongan</td>
             </tr>
             <tr>
-                <td colspan="2">: Rp '.number_format(($slip_data['gaji_pokok']+$slip_data['tunjangan_beras']+$slip_data['tunjangan_kehadiran']+$slip_data['tunjangan_suami_istri']+$slip_data['tunjangan_anak']), 2, ',', '.').'</td>
-                <td colspan="2">: Rp '.number_format(($slip_data['potongan_bpjs']+$slip_data['infak']), 2, ',', '.').'</td>
+                <td colspan="2">: Rp '.number_format(($slip_data['gaji_pokok']+$slip_data['tunjangan_beras']+$slip_data['tunjangan_kehadiran']+$slip_data['tunjangan_suami_istri_display']+$slip_data['tunjangan_anak_display']), 0, ',', '.').'</td>
+                <td colspan="2">: Rp '.number_format(($slip_data['potongan_bpjs']+$slip_data['infak']), 0, ',', '.').'</td>
             </tr>
             <tr>
                 <td colspan="4" style="border-top:1px solid #000;"></td>
             </tr>
             <tr>
                 <td colspan="2"><b>Gaji Bersih</b></td>
-                <td colspan="2"><b>: Rp '.number_format($slip_data['gaji_bersih'], 2, ',', '.').'</b></td>
+                <td colspan="2"><b>: Rp '.number_format($slip_data['gaji_bersih'], 0, ',', '.').'</b></td>
             </tr>
         </table>
         <table class="ttd-table">
